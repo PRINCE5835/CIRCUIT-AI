@@ -1,0 +1,115 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: breadboard
+      MYSQL_USER: breadboard
+      MYSQL_PASSWORD: breadboard
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../../database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - breadboard-net
+
+  backend:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../../.env
+    volumes:
+      - ../../backend:/app
+    depends_on:
+      mysql:
+        condition: service_healthy
+      ai-engine:
+        condition: service_started
+      redis:
+        condition: service_started
+    networks:
+      - breadboard-net
+
+  ai-engine:
+    build:
+      context: ../../ai-engine
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    env_file:
+      - ../../.env
+    volumes:
+      - ../../ai-engine:/app
+      - model_data:/app/engine/models
+    depends_on:
+      ollama:
+        condition: service_started
+    networks:
+      - breadboard-net
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - breadboard-net
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "
+      ollama serve &
+      sleep 3
+      echo 'Pulling LLaVA 7B...'
+      ollama pull llava
+      echo 'Pulling Gemma3 2B...'
+      ollama pull gemma3:2b
+      echo 'Pulling DeepSeek Coder 1.3B...'
+      ollama pull deepseek-coder:1.3b
+      echo 'Models ready.'
+      wait
+      "
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - breadboard-net
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/sites:/etc/nginx/sites:ro
+    depends_on:
+      - backend
+    networks:
+      - breadboard-net
+
+volumes:
+  mysql_data:
+  model_data:
+  ollama_data:
+  redis_data:
+
+networks:
+  breadboard-net:
+    driver: bridge

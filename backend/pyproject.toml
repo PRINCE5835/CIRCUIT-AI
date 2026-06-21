@@ -1,0 +1,59 @@
+[project]
+name = "breadboard-backend"
+version = "0.1.0"
+description = "BreadBoard AI - FastAPI Backend"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "sqlalchemy[asyncio]>=2.0.25",
+    "alembic>=1.13.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-multipart>=0.0.6",
+    "httpx>=0.26.0",
+    "redis>=5.0.0",
+    "slowapi>=0.1.9",
+    "email-validator>=2.1.0",
+    "aiomysql>=0.2.0",
+    "greenlet>=3.0.3",
+    "cryptography>=42.0.0",
+    "pymysql>=1.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "flake8>=7.0.0",
+    "black>=24.2.0",
+    "isort>=5.13.0",
+    "mypy>=1.8.0",
+]
+prod = [
+    "gunicorn>=21.2.0",
+    "sentry-sdk>=1.40.0",
+    "prometheus-client>=0.19.0",
+    "aiomysql>=0.2.0",
+    "pymysql>=1.1.0",
+]
+
+[tool.black]
+line-length = 100
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+strict = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: breadboard-ai-engine
+  labels:
+    app: breadboard-ai-engine
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: breadboard-ai-engine
+  template:
+    metadata:
+      labels:
+        app: breadboard-ai-engine
+    spec:
+      containers:
+        - name: ai-engine
+          image: breadboard-ai-engine:latest
+          ports:
+            - containerPort: 8001
+          envFrom:
+            - configMapRef:
+                name: breadboard-config
+            - secretRef:
+                name: breadboard-secrets
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: breadboard-ai-engine
+spec:
+  selector:
+    app: breadboard-ai-engine
+  ports:
+    - port: 8001
+      targetPort: 8001
+  type: ClusterIP

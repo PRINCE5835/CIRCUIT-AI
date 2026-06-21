@@ -1,0 +1,14 @@
+# Default owners
+* @breadboard/team
+
+# Backend changes
+/backend/ @breadboard/backend-team
+
+# AI Engine changes
+/ai-engine/ @breadboard/ai-team
+
+# Frontend changes
+/apps/ @breadboard/frontend-team
+
+# Infrastructure changes
+/infrastructure/ @breadboard/devops-team

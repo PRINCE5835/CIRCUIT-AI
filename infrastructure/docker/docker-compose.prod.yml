@@ -1,0 +1,72 @@
+version: "3.9"
+
+services:
+  mysql:
+    restart: always
+    deploy:
+      replicas: 1
+    volumes:
+      - mysql_prod_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: breadboard
+      MYSQL_USER: breadboard
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+  backend:
+    command: gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8000
+    restart: always
+    deploy:
+      replicas: 2
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  ai-engine:
+    restart: always
+    deploy:
+      replicas: 2
+
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  nginx:
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/sites:/etc/nginx/sites:ro
+      - ssl_certs:/etc/nginx/ssl:ro
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - breadboard-net
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ../monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - breadboard-net
+
+volumes:
+  mysql_prod_data:
+  prometheus_data:
+  grafana_data:
+  ssl_certs:

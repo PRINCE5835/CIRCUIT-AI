@@ -1,0 +1,49 @@
+name: breadboard_mobile
+description: BreadBoard AI - Mobile App for electronics learning & circuit generation.
+publish_to: 'none'
+
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.2.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  flutter_riverpod: ^2.6.1
+  go_router: ^16.0.0
+  flutter_animate: ^4.5.2
+  google_fonts: ^6.3.0
+  cached_network_image: ^3.4.1
+  dio: ^5.9.0
+  intl: ^0.20.2
+  responsive_framework: ^1.5.1
+  shared_preferences: ^2.5.3
+
+  breadboard_shared:
+    path: ../packages/shared
+  
+
+  flutter_localizations:
+    sdk: flutter
+
+
+  record: ^5.0.4
+  audioplayers: ^5.2.1
+  image_picker: ^1.0.7
+  flutter_svg: ^2.0.9
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/lottie/
+    - assets/sounds/

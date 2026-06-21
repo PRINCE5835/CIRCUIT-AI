@@ -1,0 +1,25 @@
+name: Deploy Web App
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web_app/**"
+
+jobs:
+  deploy-web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web_app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.19"
+      - run: flutter pub get
+      - run: flutter build web
+      - uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./apps/web_app/build/web

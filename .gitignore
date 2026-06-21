@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment
+.env
+.venv/
+env/
+venv/
+virtualenv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.db
+*.sqlite3
+
+# Flutter/Dart
+apps/*/build/
+apps/*/.dart_tool/
+apps/*/.packages
+apps/*/.pub/
+apps/*/.flutter-plugins
+apps/*/.flutter-plugins-dependencies
+apps/*/pubspec.lock
+apps/*/coverage/
+
+# Model weights (too large for git)
+ai-engine/engine/models/whisper/
+ai-engine/engine/models/vosk/
+ai-engine/engine/models/yolo/
+ai-engine/engine/models/ocr/
+!ai-engine/engine/models/**/.gitkeep
+
+# Docker
+infrastructure/docker/data/
+
+# Logs
+*.log
+logs/
+
+# Coverage
+coverage/
+htmlcov/
+.coverage

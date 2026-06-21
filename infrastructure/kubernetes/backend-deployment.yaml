@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: breadboard-backend
+  labels:
+    app: breadboard-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: breadboard-backend
+  template:
+    metadata:
+      labels:
+        app: breadboard-backend
+    spec:
+      containers:
+        - name: backend
+          image: breadboard-backend:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: breadboard-config
+            - secretRef:
+                name: breadboard-secrets
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: breadboard-backend
+spec:
+  selector:
+    app: breadboard-backend
+  ports:
+    - port: 8000
+      targetPort: 8000
+  type: ClusterIP
