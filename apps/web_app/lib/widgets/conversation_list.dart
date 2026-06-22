@@ -183,7 +183,9 @@ class _ConversationListState extends ConsumerState<ConversationList> {
 
                     return Container(
                       color: selected ? DSColors.primary.withValues(alpha: 0.08) : null,
-                      child: ListTile(
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: ListTile(
                         dense: true,
                         leading: Icon(
                           Icons.chat_outlined,
@@ -213,7 +215,8 @@ class _ConversationListState extends ConsumerState<ConversationList> {
                         ),
                         onTap: () => widget.onSelect(id),
                       ),
-                    );
+                    ),
+                  );
                   },
                 );
               },
