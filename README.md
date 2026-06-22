@@ -1,76 +1,77 @@
-<<<<<<< HEAD
-# 🔌 BreadBoard AI
+# BreadBoard AI
 
-> Voice-first electronics learning app for students and beginners in India.
+Voice-first electronics learning platform. Speak in natural language — get circuit diagrams, component lists, cost estimates & breadboard verification instantly.
 
-Speak in **Hindi or English** — get circuit diagrams, parts list, 
-cost estimation & breadboard verification instantly.
-
----
-
-## 👥 Team — Innovix Team
-
-| Member | Role |
-|--------|------|
-| Priya Saini | Backend & CV Lead + Team Lead |
-| Pritam Sharma | Flutter & UI Lead |
-| Prince Gamot | AI & Prompt Engineering Lead |
-| Jay Khandelwal | Integration, Testing & Deployment Lead |
-
----
-
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Flutter + Dart |
+| Frontend | Flutter + Dart (Mobile + Web) |
 | Backend | Python + FastAPI |
-| AI / Voice | Sarvam AI |
-| Computer Vision | OpenCV |
-| Database | SQLite (MVP) |
+| AI Engine | FastAPI + Ollama (local LLMs) |
+| Database | MySQL 8 + async SQLAlchemy |
+| Speech | Whisper / Vosk (optional) |
+| Vision | OpenCV / YOLO (optional) |
 
----
+## Project Structure
 
-## 📁 Branch Structure
+```
+apps/
+  mobile_app/       — Android + iOS app
+  web_app/          — Flutter web app
+  admin_panel/      — Admin web panel
+  teacher_dashboard/— Teacher dashboard
+  packages/shared/  — Shared Flutter package (core, design, widgets)
+backend/            — FastAPI Python backend
+ai-engine/          — AI/ML Python microservice
+shared/             — Shared types, schemas, constants
+infrastructure/     — Docker, K8s, monitoring
+```
 
-| Branch | Owner | Purpose |
-|--------|-------|---------|
-| `main` | Team Lead | Stable code only |
-| `mobile` | Pritam | Flutter UI |
-| `ai` | Prince | AI + Prompts |
-| `backend` | Priya | FastAPI + CV |
-| `testing` | Jay | Testing + Docs |
+## Quick Start
 
----
+### Prerequisites
+- Python 3.11+
+- Flutter 3.x
+- MySQL 8.0
+- Ollama
 
-## 🗓️ 30-Day Roadmap
+### 1. Database
+```bash
+mysql -u root -p -e "CREATE USER IF NOT EXISTS 'breadboard'@'localhost' IDENTIFIED BY 'breadboard'; CREATE DATABASE IF NOT EXISTS breadboard; GRANT ALL ON breadboard.* TO 'breadboard'@'localhost';"
+cd backend && alembic upgrade head
+```
 
-- **Week 1** — Core prototype (voice input + AI response + 5 circuits)
-- **Week 2** — Visual learning (diagrams + Hindi output + cost)
-- **Week 3** — Computer vision (breadboard photo verification)
-- **Week 4** — Polish + deploy + demo video + PPT
+### 2. Backend
+```bash
+cd backend
+pip install -e .
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
 
----
+### 3. AI Engine
+```bash
+cd ai-engine
+pip install -e .
+uvicorn engine.main:app --host 0.0.0.0 --port 8001
+```
 
-## ✅ MVP Features
+### 4. Flutter (Mobile or Web)
+```bash
+cd apps/mobile_app && flutter run          # Android/iOS
+cd apps/web_app && flutter run -d chrome   # Web
+```
 
-- [x] Voice input
-- [x] Hindi + English support
-- [x] Circuit diagram generation
-- [x] Parts list + cost estimation
-- [x] Basic breadboard verification
+### Android Emulator Note
+Auto-detects `10.0.2.2` for host connectivity. Override with:
+```bash
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000 --dart-define=AI_ENGINE_URL=http://10.0.2.2:8001
+```
 
----
+## Environment Variables
 
-## 🚀 Setup Instructions
-
-*Coming soon — each module will have its own setup guide.*
-
----
-
-## 📄 License
-
-Private repository — All rights reserved © Innovix Team 2025
-=======
-# CIRCUIT-AI
->>>>>>> 74ed9732b50827b582753e5e9175bf8c1a6f5017
+Copy `.env.example` to `.env` in `backend/` and configure:
+- `DATABASE_URL` — MySQL connection string
+- `JWT_SECRET_KEY` — JWT signing secret
+- `OLLAMA_HOST` — Ollama server URL
+- `OLLAMA_MODEL` — Default LLM model
