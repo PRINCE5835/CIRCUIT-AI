@@ -4,9 +4,11 @@ Falls back gracefully if model not downloaded.
 """
 # flake8: noqa: E501
 
+import logging
 from typing import Optional
+import numpy as np
 from .audio_preprocessor import preprocessor
-from ..core.config import settings
+from ...core.config import settings
 
 logger = logging.getLogger(__name__)
 

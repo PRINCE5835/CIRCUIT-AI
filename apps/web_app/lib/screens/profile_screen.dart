@@ -148,10 +148,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     padding: const EdgeInsets.only(bottom: 16),
                     child: _isSaving
                         ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-                        : FilledButton.icon(
-                            onPressed: _updateName,
-                            icon: const Icon(Icons.save, size: 18),
-                            label: const Text('Save'),
+                        : Semantics(
+                            label: 'Save name',
+                            button: true,
+                            child: FilledButton.icon(
+                              onPressed: _updateName,
+                              icon: const Icon(Icons.save, size: 18),
+                              label: const Text('Save'),
+                            ),
                           ),
                   ),
                 ),

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:dio/dio.dart';
+import 'camera_dialog.dart';
 import 'package:breadboard_shared/breadboard_shared.dart';
+
+final globalSearchProvider = StateProvider<String>((ref) => '');
 
 class WebShell extends ConsumerStatefulWidget {
   final Widget child;
@@ -15,72 +16,7 @@ class WebShell extends ConsumerStatefulWidget {
 
 class _WebShellState extends ConsumerState<WebShell> {
   Future<void> _scanComponent() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(type: FileType.image);
-      if (result == null || result.files.isEmpty) return;
-
-      final file = result.files.first;
-      if (file.path == null && file.bytes == null) return;
-
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const Center(child: CircuitSpinner(size: 48)),
-      );
-
-      final formData = FormData.fromMap({
-        'file': file.bytes != null
-            ? MultipartFile.fromBytes(file.bytes!, filename: file.name)
-            : await MultipartFile.fromFile(file.path!, filename: file.name),
-      });
-      final response = await ApiClient.instance.dio.post(
-        ApiEndpoints.aiVisionDetect,
-        data: formData,
-      );
-
-      if (mounted) Navigator.of(context).pop();
-      final resultData = response.data;
-      final components = resultData['components'] as List<dynamic>? ?? [resultData];
-
-      if (!mounted) return;
-      _showResults(components);
-    } catch (e) {
-      if (mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Scan failed: ${e.toString()}')),
-        );
-      }
-    }
-  }
-
-  void _showResults(List<dynamic> components) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Detected Components'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: components.map((c) {
-            final cMap = c as Map<String, dynamic>;
-            final name = cMap['name'] as String? ?? 'Unknown';
-            final confidence = cMap['confidence'] as num?;
-            return ListTile(
-              leading: const Icon(Icons.memory, color: DSColors.circuitCyan),
-              title: Text(name),
-              subtitle: confidence != null
-                  ? Text('${(confidence * 100).toStringAsFixed(0)}% confidence')
-                  : null,
-              dense: true,
-            );
-          }).toList(),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
-        ],
-      ),
-    );
+    await showDialog(context: context, builder: (_) => const CameraDialog());
   }
 
   @override
@@ -98,12 +34,72 @@ class _WebShellState extends ConsumerState<WebShell> {
   }
 }
 
-class _Sidebar extends ConsumerWidget {
+class _Sidebar extends ConsumerStatefulWidget {
   final VoidCallback onScan;
   const _Sidebar({required this.onScan});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_Sidebar> createState() => _SidebarState();
+}
+
+class _SidebarState extends ConsumerState<_Sidebar> {
+  final _searchController = TextEditingController();
+  List<Map<String, dynamic>> _searchResults = [];
+  bool _showResults = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _onSearch(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() { _searchResults = []; _showResults = false; });
+      return;
+    }
+    try {
+      final results = <Map<String, dynamic>>[];
+      try {
+        final compResp = await ApiClient.instance.dio.get(
+          '${ApiEndpoints.components}?query=${Uri.encodeComponent(query)}&limit=5',
+        );
+        final items = (compResp.data['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        for (final item in items) {
+          results.add({
+            'type': 'component',
+            'label': item['name'] ?? '',
+            'subtitle': item['category'] ?? '',
+            'route': RoutePaths.componentCatalog,
+            'data': item,
+          });
+        }
+      } catch (_) {}
+      try {
+        final projResp = await ApiClient.instance.dio.get(
+          '${ApiEndpoints.projects}?q=${Uri.encodeComponent(query)}&limit=3',
+        );
+        final items = (projResp.data['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        for (final item in items) {
+          results.add({
+            'type': 'project',
+            'label': item['title'] ?? '',
+            'subtitle': item['status'] ?? '',
+            'route': RoutePaths.projectHistory,
+            'data': item,
+          });
+        }
+      } catch (_) {}
+      if (mounted) {
+        setState(() { _searchResults = results; _showResults = true; });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _searchResults = []; _showResults = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final location = GoRouterState.of(context).uri.path;
     final authState = ref.watch(authProvider);
@@ -111,7 +107,7 @@ class _Sidebar extends ConsumerWidget {
     final allItems = [..._navItems, _NavItem('Scan', Icons.qr_code_scanner, '/scan')];
 
     return Container(
-      width: 220,
+      width: 240,
       decoration: BoxDecoration(
         color: isDark ? DSColors.surfaceDarkElevated : DSColors.white,
         border: Border(
@@ -121,7 +117,7 @@ class _Sidebar extends ConsumerWidget {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(vertical: DSDimensions.s20, horizontal: DSDimensions.s16),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
             child: Row(
               children: [
                 Container(
@@ -137,41 +133,118 @@ class _Sidebar extends ConsumerWidget {
               ],
             ),
           ),
-          const Divider(height: 1),
-          const SizedBox(height: 8),
-          ...allItems.map((item) {
-            if (item.route == '/scan') {
-              return _SidebarActionButton(
-                icon: item.icon,
-                label: item.label,
-                onTap: onScan,
-              );
-            }
-            return _NavItemWidget(item: item, isSelected: location == item.route);
-          }),
-          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Semantics(
+              label: 'Global search',
+              child: TextField(
+                controller: _searchController,
+                onChanged: _onSearch,
+                style: TextStyle(fontSize: 13, color: isDark ? DSColors.white : DSColors.grey900),
+                decoration: InputDecoration(
+                  hintText: 'Search...',
+                  hintStyle: TextStyle(fontSize: 13, color: isDark ? DSColors.grey500 : DSColors.grey400),
+                  prefixIcon: Icon(Icons.search, size: 16, color: isDark ? DSColors.grey400 : DSColors.grey500),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 16),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() { _searchResults = []; _showResults = false; });
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: isDark ? DSColors.surfaceDarkVariant : DSColors.grey50,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  isDense: true,
+                ),
+              ),
+            ),
+          ),
+          if (_showResults && _searchResults.isNotEmpty)
+            Container(
+              constraints: const BoxConstraints(maxHeight: 200),
+              margin: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: isDark ? DSColors.surfaceDarkCard : DSColors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _searchResults.length,
+                itemBuilder: (_, i) {
+                  final r = _searchResults[i];
+                  return ListTile(
+                    dense: true,
+                    leading: Icon(
+                      r['type'] == 'component' ? Icons.inventory_2_outlined : Icons.folder_outlined,
+                      size: 16,
+                      color: DSColors.primary,
+                    ),
+                    title: Text(r['label'] as String? ?? '', style: const TextStyle(fontSize: 12)),
+                    subtitle: r['subtitle'] != null ? Text(r['subtitle'] as String, style: const TextStyle(fontSize: 10)) : null,
+                    onTap: () {
+                      _searchController.clear();
+                      setState(() { _searchResults = []; _showResults = false; });
+                      context.go(r['route'] as String);
+                    },
+                  );
+                },
+              ),
+            ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              children: [
+                ...allItems.map((item) {
+                  if (item.route == '/scan') {
+                    return _SidebarActionButton(
+                      icon: item.icon,
+                      label: item.label,
+                      onTap: widget.onScan,
+                    );
+                  }
+                  return _NavItemWidget(item: item, isSelected: location == item.route);
+                }),
+              ],
+            ),
+          ),
           if (authState.isAuthenticated) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 14,
-                    backgroundColor: DSColors.primary.withValues(alpha: 0.2),
-                    child: Text(
-                      (user?['display_name'] as String? ?? user?['username'] as String? ?? 'U')[0].toUpperCase(),
-                      style: TextStyle(fontSize: 12, color: DSColors.primary, fontWeight: FontWeight.w600),
+              child: Semantics(
+                label: 'User profile',
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 14,
+                      backgroundColor: DSColors.primary.withValues(alpha: 0.2),
+                      child: Text(
+                        (user?['display_name'] as String? ?? user?['username'] as String? ?? 'U')[0].toUpperCase(),
+                        style: TextStyle(fontSize: 12, color: DSColors.primary, fontWeight: FontWeight.w600),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      user?['display_name'] as String? ?? user?['username'] as String? ?? 'User',
-                      style: TextStyle(fontSize: 13, color: isDark ? DSColors.grey300 : DSColors.grey700),
-                      overflow: TextOverflow.ellipsis,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        user?['display_name'] as String? ?? user?['username'] as String? ?? 'User',
+                        style: TextStyle(fontSize: 13, color: isDark ? DSColors.grey300 : DSColors.grey700),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             Padding(
@@ -221,17 +294,21 @@ class _SidebarActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: isDark ? DSColors.grey400 : DSColors.grey600),
-            const SizedBox(width: 12),
-            Text(label, style: TextStyle(fontSize: 13, color: isDark ? DSColors.grey400 : DSColors.grey600)),
-          ],
+    return Semantics(
+      label: label,
+      button: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: isDark ? DSColors.grey400 : DSColors.grey600),
+              const SizedBox(width: 12),
+              Text(label, style: TextStyle(fontSize: 13, color: isDark ? DSColors.grey400 : DSColors.grey600)),
+            ],
+          ),
         ),
       ),
     );
@@ -246,28 +323,33 @@ class _NavItemWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      child: Material(
-        color: isSelected
-            ? DSColors.primary.withValues(alpha: 0.12)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
+    return Semantics(
+      label: item.label,
+      selected: isSelected,
+      button: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        child: Material(
+          color: isSelected
+              ? DSColors.primary.withValues(alpha: 0.12)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          onTap: () => context.go(item.route),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            child: Row(
-              children: [
-                Icon(item.icon, size: 20, color: isSelected ? DSColors.primary : (isDark ? DSColors.grey300 : DSColors.grey600)),
-                const SizedBox(width: 12),
-                Text(item.label, style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: isSelected ? DSColors.primary : (isDark ? DSColors.grey300 : DSColors.grey600),
-                )),
-              ],
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => context.go(item.route),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              child: Row(
+                children: [
+                  Icon(item.icon, size: 20, color: isSelected ? DSColors.primary : (isDark ? DSColors.grey300 : DSColors.grey600)),
+                  const SizedBox(width: 12),
+                  Text(item.label, style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: isSelected ? DSColors.primary : (isDark ? DSColors.grey300 : DSColors.grey600),
+                  )),
+                ],
+              ),
             ),
           ),
         ),
@@ -287,7 +369,7 @@ class _BottomNav extends StatelessWidget {
     final allItems = [
       _navItems[0], _navItems[1],
       _NavItem('Scan', Icons.qr_code_scanner, '/scan'),
-      _navItems[2], _navItems[3],
+      _navItems[2], _navItems[11],
     ];
     return Container(
       decoration: BoxDecoration(
@@ -302,24 +384,28 @@ class _BottomNav extends StatelessWidget {
             children: allItems.map((item) {
               if (item.route == '/scan') {
                 return Expanded(
-                  child: InkWell(
-                    onTap: onScan,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 44, height: 44,
-                            decoration: BoxDecoration(
-                              gradient: DSGradients.primaryGradient,
-                              shape: BoxShape.circle,
+                  child: Semantics(
+                    label: 'Scan component',
+                    button: true,
+                    child: InkWell(
+                      onTap: onScan,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 44, height: 44,
+                              decoration: BoxDecoration(
+                                gradient: DSGradients.primaryGradient,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 22),
                             ),
-                            child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 22),
-                          ),
-                          const SizedBox(height: 2),
-                          Text('Scan', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: DSColors.primary)),
-                        ],
+                            const SizedBox(height: 2),
+                            Text('Scan', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: DSColors.primary)),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -327,17 +413,22 @@ class _BottomNav extends StatelessWidget {
               }
               final sel = location == item.route;
               return Expanded(
-                child: InkWell(
-                  onTap: () => context.go(item.route),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(item.icon, size: 22, color: sel ? DSColors.primary : (isDark ? DSColors.grey400 : DSColors.grey500)),
-                        const SizedBox(height: 2),
-                        Text(item.label, style: TextStyle(fontSize: 10, fontWeight: sel ? FontWeight.w600 : FontWeight.w400, color: sel ? DSColors.primary : (isDark ? DSColors.grey400 : DSColors.grey500))),
-                      ],
+                child: Semantics(
+                  label: item.label,
+                  selected: sel,
+                  button: true,
+                  child: InkWell(
+                    onTap: () => context.go(item.route),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(item.icon, size: 22, color: sel ? DSColors.primary : (isDark ? DSColors.grey400 : DSColors.grey500)),
+                          const SizedBox(height: 2),
+                          Text(item.label, style: TextStyle(fontSize: 10, fontWeight: sel ? FontWeight.w600 : FontWeight.w400, color: sel ? DSColors.primary : (isDark ? DSColors.grey400 : DSColors.grey500))),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -354,19 +445,23 @@ class _ThemeToggle extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => ref.read(themeModeProvider.notifier).toggle(),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, size: 20),
-              const SizedBox(width: 12),
-              Text(isDark ? 'Light Mode' : 'Dark Mode', style: const TextStyle(fontSize: 14)),
-            ],
+    return Semantics(
+      label: 'Toggle theme',
+      button: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => ref.read(themeModeProvider.notifier).toggle(),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, size: 20),
+                const SizedBox(width: 12),
+                Text(isDark ? 'Light Mode' : 'Dark Mode', style: const TextStyle(fontSize: 14)),
+              ],
+            ),
           ),
         ),
       ),
@@ -384,7 +479,15 @@ class _NavItem {
 final List<_NavItem> _navItems = const [
   _NavItem('Home', Icons.dashboard_outlined, '/home'),
   _NavItem('Voice AI', Icons.mic_outlined, '/voice'),
-  _NavItem('Circuit', Icons.circle_outlined, '/circuit-generation'),
+  _NavItem('Circuit Gen', Icons.circle_outlined, '/circuit-generation'),
+  _NavItem('Circuit Learn', Icons.school_outlined, '/circuit-learning'),
+  _NavItem('Repair', Icons.build_outlined, '/repair-assistant'),
+  _NavItem('Safety', Icons.shield_outlined, '/safety-validation'),
+  _NavItem('Cost Estimator', Icons.monetization_on_outlined, '/cost-estimation'),
+  _NavItem('Verification', Icons.camera_alt_outlined, '/breadboard-verification'),
+  _NavItem('Components', Icons.inventory_2_outlined, '/components'),
+  _NavItem('Projects', Icons.folder_outlined, '/project-history'),
   _NavItem('Market', Icons.store_outlined, '/marketplace'),
   _NavItem('Profile', Icons.person_outlined, '/profile'),
+  _NavItem('Settings', Icons.settings_outlined, '/settings'),
 ];

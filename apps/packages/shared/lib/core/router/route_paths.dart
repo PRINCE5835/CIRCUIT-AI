@@ -17,6 +17,7 @@ abstract class RoutePaths {
   static const String projectHistory = '/project-history';
   static const String costEstimation = '/cost-estimation';
   static const String safetyValidation = '/safety-validation';
+  static const String componentCatalog = '/components';
   static const String profile = '/profile';
   static const String settings = '/settings';
 }

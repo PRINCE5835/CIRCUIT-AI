@@ -1,7 +1,10 @@
 import logging
+import json
 import base64
+import httpx
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from contextlib import asynccontextmanager
 
 from .core.config import settings
@@ -12,6 +15,7 @@ from .llm.prompts.repair_diagnosis import REPAIR_DIAGNOSIS_SYSTEM
 from .llm.prompts.learning_tutor import LEARNING_TUTOR_SYSTEM
 from .llm.prompts.component_info import COMPONENT_INFO_SYSTEM
 from .speech.stt.vosk_handler import handler as vosk_handler
+from .speech.stt.whisper_handler import handler as whisper_handler
 from .classifier import classify, QueryType
 from .content import sources as content_sources
 
@@ -30,7 +34,12 @@ SYSTEM_PROMPTS: dict[QueryType, str] = {
     "general": (
         "You are BreadBoard AI, an expert electronics engineering assistant. "
         "You help users with circuit design, component selection, troubleshooting, "
-        "and learning electronics. Answer from your knowledge with specificity. "
+        "and learning electronics. "
+        "Be conversational and friendly — greet users warmly, ask clarifying questions, "
+        "and provide detailed step-by-step guidance. "
+        "If the user says 'hi', 'hello', 'hey', or greets you, respond with a warm "
+        "greeting introducing yourself and asking how you can help with electronics. "
+        "Answer from your knowledge with specificity. "
         "If asked about a specific circuit, provide wiring steps, component lists, "
         "and explanations. Always include source URLs and datasheet references."
     ),
@@ -56,6 +65,10 @@ def _collect_source_urls(messages: list[dict]) -> list[dict]:
 async def lifespan(app: FastAPI):
     logger.info("BreadBoard AI Engine starting — environment: %s", settings.environment)
     await vosk_handler.load()
+    try:
+        await whisper_handler.load()
+    except Exception:
+        logger.warning("Whisper not available (install openai-whisper)")
     yield
     await ollama_client.close()
     logger.info("AI Engine shut down")
@@ -96,7 +109,7 @@ async def health(request: Request):
         "status": "healthy",
         "ollama": ollama_ok,
         "models_available": len(registry.list_available()),
-        "whisper_loaded": False,
+        "whisper_loaded": whisper_handler._available,
         "vosk_loaded": vosk_handler._available,
         "piper_available": False,
     }
@@ -155,30 +168,48 @@ async def chat(body: dict):
 
     messages = [{"role": "system", "content": system_prompt}] + messages
 
-    try:
-        result = []
-        async for chunk in ollama_client.chat(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            stream=stream,
-        ):
-            result.append(chunk)
-        if stream:
-            return result
-        response = result[0] if result else {}
-        content = response.get("message", {}).get("content", "")
-        return {
-            "response": content,
-            "model": model,
-            "query_type": query_type,
-            "sources": source_urls,
-            "matched_circuits": [c["title"] for c in matched_circuits],
-        }
-    except Exception as e:
-        logger.error("Chat error: %s", str(e))
-        raise HTTPException(status_code=502, detail=f"AI Engine error: {str(e)}")
+    async def _stream():
+        yield f"data: {json.dumps({'type': 'meta', 'query_type': query_type, 'model': model, 'sources': source_urls, 'matched_circuits': [c['title'] for c in matched_circuits]})}\n\n"
+        full_content = ""
+        try:
+            async for chunk in ollama_client.chat(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=True,
+            ):
+                content = chunk.get("message", {}).get("content", "")
+                if content:
+                    full_content += content
+                    yield f"data: {json.dumps({'type': 'token', 'token': content})}\n\n"
+                if chunk.get("done"):
+                    yield f"data: {json.dumps({'type': 'done', 'content': full_content})}\n\n"
+        except Exception as e:
+            logger.error("Streaming error: %s", str(e))
+            yield f"data: {json.dumps({'type': 'error', 'detail': str(e)})}\n\n"
+
+    if stream:
+        return StreamingResponse(_stream(), media_type="text/event-stream")
+
+    result = []
+    async for chunk in ollama_client.chat(
+        model=model,
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        stream=False,
+    ):
+        result.append(chunk)
+    response = result[0] if result else {}
+    content = response.get("message", {}).get("content", "")
+    return {
+        "response": content,
+        "model": model,
+        "query_type": query_type,
+        "sources": source_urls,
+        "matched_circuits": [c["title"] for c in matched_circuits],
+    }
 
 
 @app.post("/api/v1/generate")
@@ -265,9 +296,99 @@ async def synthesize(body: dict):
 
 @app.post("/api/v1/vision/detect")
 async def detect_components(body: dict):
-    return {"message": "Vision detection not configured yet"}
+    image_b64 = body.get("image", "")
+    if not image_b64:
+        raise HTTPException(status_code=400, detail="Image data is required")
+
+    try:
+        import json as _json
+
+        prompt = (
+            "You are an expert electronics component analyzer. Carefully examine the provided image.\n\n"
+            "RULES:\n"
+            "- If NO circuit board, electronic components, or electronic parts are visible, return: "
+            "{\"status\": \"no_circuit\", \"message\": \"No electronic circuit or components detected in the image.\"}\n"
+            "- If the image is blurry, unclear, or too dark to identify components clearly, return: "
+            "{\"status\": \"unclear\", \"message\": \"The image is not clear enough. Please capture a clearer photo with good lighting.\"}\n"
+            "- If components ARE visible, perform a DEEP SCAN and identify every component with as much detail as possible.\n\n"
+            "For each detected component, provide:\n"
+            "  - name: exact component name/type (e.g., \"Resistor 220Ω\", \"LM358 Op-Amp\", \"10µF 16V Capacitor\")\n"
+            "  - type: component category (resistor, capacitor, IC, transistor, diode, LED, connector, etc.)\n"
+            "  - confidence: 0.0 to 1.0\n"
+            "  - quantity: number of identical components found\n"
+            "  - package: package type if visible (e.g., \"SMD-0805\", \"DIP-8\", \"TO-220\", \"0603\", \"THT\")\n"
+            "  - markings: any text/labels visible on the component\n\n"
+            "Return ONLY valid JSON. No markdown, no explanations outside the JSON.\n\n"
+            "SUCCESS FORMAT:\n"
+            "{\"status\": \"success\", \"components\": [{\"name\": \"...\", \"type\": \"...\", \"confidence\": 0.95, \"quantity\": 2, \"package\": \"...\", \"markings\": \"...\"}, ...]}\n\n"
+            "NO_CIRCUIT FORMAT:\n"
+            "{\"status\": \"no_circuit\", \"message\": \"...\"}\n\n"
+            "UNCLEAR FORMAT:\n"
+            "{\"status\": \"unclear\", \"message\": \"...\"}"
+        )
+
+        # Send image to LLaVA via Ollama's /api/generate with images array
+        payload = {
+            "model": "llava",
+            "prompt": prompt,
+            "images": [image_b64],
+            "options": {
+                "temperature": 0.1,
+                "num_predict": 4096,
+            },
+            "stream": False,
+        }
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post("http://localhost:11434/api/generate", json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+            raw = data.get("response", "")
+
+        raw = raw.replace("```json", "").replace("```", "").strip()
+        result = _json.loads(raw)
+
+        status = result.get("status", "success")
+        if status == "no_circuit":
+            return {"status": "no_circuit", "message": result.get("message", "No electronic circuit or components detected."), "model": "llava"}
+        if status == "unclear":
+            return {"status": "unclear", "message": result.get("message", "Image is not clear enough."), "model": "llava"}
+
+        components = result.get("components", [])
+        if isinstance(components, list) and components:
+            return {"status": "success", "components": components, "model": "llava"}
+        else:
+            return {"status": "no_circuit", "message": "No electronic components could be identified in the image.", "model": "llava"}
+
+    except Exception as e:
+        logger.error("Vision detection error: %s", str(e))
+
+    return {"status": "error", "message": "Vision detection failed. Please try again with a clearer image.", "components": []}
 
 
 @app.post("/api/v1/cost/estimate")
 async def estimate_cost(body: dict):
-    return {"message": "Cost estimation not configured yet"}
+    components = body.get("components", [])
+    if not components:
+        raise HTTPException(status_code=400, detail="Components list is required")
+
+    try:
+        prompt = (
+            f"Estimate the cost of these electronic components in INR: {components}. "
+            "Return a JSON object with 'total_cost', 'currency': 'INR', "
+            "and 'breakdown' as a list of {name, quantity, unit_price, total}. "
+            "Only return the JSON."
+        )
+        response = await ollama_client.generate(
+            model=settings.ollama_light_model,
+            prompt=prompt,
+            temperature=0.1,
+            max_tokens=2048,
+        )
+        raw = response.strip() if isinstance(response, str) else response.get("response", "")
+        import json as _json
+        raw = raw.replace("```json", "").replace("```", "").strip()
+        result = _json.loads(raw)
+        return {**result, "model": settings.ollama_light_model}
+    except Exception as e:
+        logger.error("Cost estimation error: %s", str(e))
+        return {"message": "Cost estimation not configured yet"}

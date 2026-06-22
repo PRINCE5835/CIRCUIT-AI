@@ -1,8 +1,9 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:dio/dio.dart';
 import 'package:breadboard_shared/breadboard_shared.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -41,12 +42,12 @@ class _AppShellState extends ConsumerState<AppShell> {
         builder: (_) => const Center(child: CircuitSpinner(size: 48)),
       );
 
-      final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(image.path, filename: image.name),
-      });
+      final bytes = await File(image.path).readAsBytes();
+      final base64Image = base64Encode(bytes);
+
       final response = await ApiClient.instance.dio.post(
         ApiEndpoints.aiVisionDetect,
-        data: formData,
+        data: {'image': base64Image},
       );
 
       if (mounted) Navigator.of(context).pop();

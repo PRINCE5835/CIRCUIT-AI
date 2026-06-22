@@ -1,5 +1,5 @@
 from typing import Any, Generic, TypeVar, Optional
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import Base
@@ -30,12 +30,22 @@ class BaseRepository(Generic[ModelType]):
         limit: int = 100,
         filters: Optional[dict] = None,
         order_by: Optional[Any] = None,
+        search: Optional[str] = None,
+        search_fields: Optional[list[str]] = None,
     ) -> list[ModelType]:
         stmt = select(self.model)
         if filters:
             for key, value in filters.items():
                 if hasattr(self.model, key):
                     stmt = stmt.where(getattr(self.model, key) == value)
+        if search and search_fields:
+            conditions = [
+                getattr(self.model, field).ilike(f"%{search}%")
+                for field in search_fields
+                if hasattr(self.model, field)
+            ]
+            if conditions:
+                stmt = stmt.where(or_(*conditions))
         if order_by is not None:
             stmt = stmt.order_by(order_by)
         stmt = stmt.offset(skip).limit(limit)
@@ -61,12 +71,25 @@ class BaseRepository(Generic[ModelType]):
         await self.db.flush()
         return True
 
-    async def count(self, filters: Optional[dict] = None) -> int:
+    async def count(
+        self,
+        filters: Optional[dict] = None,
+        search: Optional[str] = None,
+        search_fields: Optional[list[str]] = None,
+    ) -> int:
         stmt = select(func.count()).select_from(self.model)
         if filters:
             for key, value in filters.items():
                 if hasattr(self.model, key):
                     stmt = stmt.where(getattr(self.model, key) == value)
+        if search and search_fields:
+            conditions = [
+                getattr(self.model, field).ilike(f"%{search}%")
+                for field in search_fields
+                if hasattr(self.model, field)
+            ]
+            if conditions:
+                stmt = stmt.where(or_(*conditions))
         result = await self.db.execute(stmt)
         return result.scalar() or 0
 

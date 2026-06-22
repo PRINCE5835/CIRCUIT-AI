@@ -8,6 +8,8 @@ from .voice_session import VoiceSession
 from .cost_estimate import CostEstimate
 from .safety_report import SafetyReport
 from .source import Source, ContentSource
+from .conversation import Conversation
+from .project_component import ProjectComponent
 
 __all__ = [
     "Base",
@@ -21,4 +23,6 @@ __all__ = [
     "SafetyReport",
     "Source",
     "ContentSource",
+    "Conversation",
+    "ProjectComponent",
 ]

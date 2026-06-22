@@ -41,6 +41,14 @@ from .marketplace import (
 from .voice import VoiceSessionCreate, VoiceSessionResponse, VoiceSessionList
 from .cost import CostEstimateCreate, CostEstimateResponse
 from .safety import SafetyReportCreate, SafetyReportUpdate, SafetyReportResponse, SafetyReportList
+from .conversation import (
+    ConversationCreate,
+    ConversationUpdate,
+    ConversationResponse,
+    ConversationSummary,
+    ConversationList,
+    AddMessageRequest,
+)
 
 __all__ = [
     "BaseSchema",
@@ -95,4 +103,10 @@ __all__ = [
     "SafetyReportUpdate",
     "SafetyReportResponse",
     "SafetyReportList",
+    "ConversationCreate",
+    "ConversationUpdate",
+    "ConversationResponse",
+    "ConversationSummary",
+    "ConversationList",
+    "AddMessageRequest",
 ]

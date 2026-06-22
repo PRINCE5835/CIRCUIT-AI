@@ -7,14 +7,30 @@ import 'package:breadboard_shared/core/di/auth_providers.dart';
 import 'screens/home_screen.dart';
 import 'screens/voice_screen.dart';
 import 'screens/circuit_screen.dart';
+import 'screens/circuit_learning_screen.dart';
+import 'screens/repair_assistant_screen.dart';
+import 'screens/safety_validation_screen.dart';
+import 'screens/cost_estimation_screen.dart';
+import 'screens/breadboard_verification_screen.dart';
+import 'screens/component_catalog_screen.dart';
+import 'screens/project_history_screen.dart';
 import 'screens/marketplace_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/settings_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
+import 'screens/forgot_password_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/splash_screen.dart';
 import 'widgets/web_shell.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
+
+Page _fadePage(Widget child) => CustomTransitionPage(
+      child: child,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+          FadeTransition(opacity: animation, child: child),
+    );
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -26,6 +42,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final location = state.matchedLocation;
       final isAuthRoute = location == RoutePaths.login ||
           location == RoutePaths.register ||
+          location == RoutePaths.forgotPassword ||
+          location == RoutePaths.onboarding ||
           location == RoutePaths.splash;
 
       if (!isLoggedIn && !isAuthRoute) return RoutePaths.login;
@@ -38,17 +56,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RoutePaths.splash,
         name: RouteNames.splash,
-        builder: (context, state) => const SplashScreen(),
+        pageBuilder: (context, state) => _fadePage(const SplashScreen()),
+      ),
+      GoRoute(
+        path: RoutePaths.onboarding,
+        name: RouteNames.onboarding,
+        pageBuilder: (context, state) => _fadePage(const OnboardingScreen()),
       ),
       GoRoute(
         path: RoutePaths.login,
         name: RouteNames.login,
-        builder: (context, state) => const LoginScreen(),
+        pageBuilder: (context, state) => _fadePage(const LoginScreen()),
       ),
       GoRoute(
         path: RoutePaths.register,
         name: RouteNames.register,
-        builder: (context, state) => const RegisterScreen(),
+        pageBuilder: (context, state) => _fadePage(const RegisterScreen()),
+      ),
+      GoRoute(
+        path: RoutePaths.forgotPassword,
+        name: RouteNames.forgotPassword,
+        pageBuilder: (context, state) => _fadePage(const ForgotPasswordScreen()),
       ),
       ShellRoute(
         builder: (context, state, child) => WebShell(child: child),
@@ -56,32 +84,72 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: RoutePaths.home,
             name: RouteNames.home,
-            builder: (context, state) => const HomeScreen(),
+            pageBuilder: (context, state) => _fadePage(const HomeScreen()),
           ),
           GoRoute(
             path: RoutePaths.voice,
             name: RouteNames.voice,
-            builder: (context, state) => const VoiceScreen(),
+            pageBuilder: (context, state) => _fadePage(const VoiceScreen()),
           ),
           GoRoute(
             path: RoutePaths.circuitGeneration,
             name: RouteNames.circuitGeneration,
-            builder: (context, state) => const CircuitScreen(),
+            pageBuilder: (context, state) => _fadePage(const CircuitScreen()),
+          ),
+          GoRoute(
+            path: RoutePaths.circuitLearning,
+            name: RouteNames.circuitLearning,
+            pageBuilder: (context, state) => _fadePage(const CircuitLearningScreen()),
+          ),
+          GoRoute(
+            path: RoutePaths.repairAssistant,
+            name: RouteNames.repairAssistant,
+            pageBuilder: (context, state) => _fadePage(const RepairAssistantScreen()),
+          ),
+          GoRoute(
+            path: RoutePaths.breadboardVerification,
+            name: RouteNames.breadboardVerification,
+            pageBuilder: (context, state) => _fadePage(const BreadboardVerificationScreen()),
+          ),
+          GoRoute(
+            path: RoutePaths.componentDetection,
+            name: RouteNames.componentDetection,
+            pageBuilder: (context, state) => _fadePage(const BreadboardVerificationScreen()),
           ),
           GoRoute(
             path: RoutePaths.marketplace,
             name: RouteNames.marketplace,
-            builder: (context, state) => const MarketplaceScreen(),
+            pageBuilder: (context, state) => _fadePage(const MarketplaceScreen()),
+          ),
+          GoRoute(
+            path: RoutePaths.projectHistory,
+            name: RouteNames.projectHistory,
+            pageBuilder: (context, state) => _fadePage(const ProjectHistoryScreen()),
+          ),
+          GoRoute(
+            path: RoutePaths.costEstimation,
+            name: RouteNames.costEstimation,
+            pageBuilder: (context, state) => _fadePage(const CostEstimationScreen()),
+          ),
+          GoRoute(
+            path: RoutePaths.safetyValidation,
+            name: RouteNames.safetyValidation,
+            pageBuilder: (context, state) => _fadePage(const SafetyValidationScreen()),
+          ),
+          GoRoute(
+            path: RoutePaths.componentCatalog,
+            name: RouteNames.componentCatalog,
+            pageBuilder: (context, state) => _fadePage(const ComponentCatalogScreen()),
           ),
           GoRoute(
             path: RoutePaths.profile,
             name: RouteNames.profile,
-            builder: (context, state) => const ProfileScreen(),
+            pageBuilder: (context, state) => _fadePage(const ProfileScreen()),
           ),
           GoRoute(
             path: RoutePaths.settings,
             name: RouteNames.settings,
-            builder: (context, state) => const ProfileScreen(),
+            pageBuilder: (context, state) => _fadePage(const SettingsScreen()),
           ),
         ],
       ),

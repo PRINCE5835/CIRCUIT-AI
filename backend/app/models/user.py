@@ -29,3 +29,4 @@ class User(Base):
     voice_sessions = relationship("VoiceSession", back_populates="user")
     cost_estimates = relationship("CostEstimate", back_populates="user")
     safety_reports = relationship("SafetyReport", back_populates="user")
+    conversations = relationship("Conversation", back_populates="user")

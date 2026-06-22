@@ -14,7 +14,10 @@
 ## Commands
 - Lint Python: `cd backend && flake8 app tests` or `cd ai-engine && flake8 engine tests`
 - Test Python: `cd backend && pytest` or `cd ai-engine && pytest`
+- Test Python unit only: `cd backend && python -m pytest tests/unit/ -v`
 - Test Flutter: `cd apps/mobile_app && flutter test`
+- Test Flutter web: `cd apps/web_app && flutter test test/`
+- Analyze Flutter: `cd apps/web_app && flutter analyze`
 - Format Python: `black --line-length=100 backend/ ai-engine/`
 - Migrate DB: `cd backend && alembic upgrade head`
 - Make migration: `cd backend && alembic revision --autogenerate -m "description"`

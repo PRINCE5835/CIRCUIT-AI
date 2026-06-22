@@ -18,6 +18,7 @@ export 'core/network/api_client.dart';
 export 'core/network/api_endpoints.dart';
 export 'core/security/auth_storage.dart';
 export 'core/cache/local_storage.dart';
+export 'core/cache/conversation_cache.dart';
 export 'core/errors/app_exceptions.dart';
 export 'shared/design_system/colors.dart';
 export 'shared/design_system/dimensions.dart';

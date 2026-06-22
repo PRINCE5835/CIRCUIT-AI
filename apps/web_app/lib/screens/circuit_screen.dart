@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:breadboard_shared/shared/design_system/colors.dart';
+import 'package:dio/dio.dart';
+import 'package:breadboard_shared/breadboard_shared.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import '../widgets/circuit_visualizer.dart';
 
 class CircuitScreen extends ConsumerStatefulWidget {
   const CircuitScreen({super.key});
@@ -24,20 +27,32 @@ class _CircuitScreenState extends ConsumerState<CircuitScreen> {
     final prompt = _controller.text.trim();
     if (prompt.isEmpty) return;
     setState(() { _isGenerating = true; _result = null; });
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
-      setState(() {
-        _result = 'Circuit: LED Blinker\n\n'
-            'Components:\n• 1x LED\n• 1x 220Ω Resistor\n• 1x 555 Timer IC\n'
-            '• 2x 10kΩ Resistors\n• 2x 100µF Capacitors\n• 1x Breadboard\n• 1x 5V Power Supply\n\n'
-            'Steps:\n1. Place 555 timer in center of breadboard\n'
-            '2. Connect pin 8 to VCC, pin 1 to GND\n'
-            '3. Connect 10kΩ between pin 7 and VCC\n'
-            '4. Connect 100µF from pin 2 to GND\n'
-            '5. Connect 220Ω + LED from pin 3 to GND\n\n'
-            'Estimated Cost: ₹45-60';
-        _isGenerating = false;
-      });
+
+    try {
+      final response = await ApiClient.instance.dio.post(
+        ApiEndpoints.aiCircuitGenerate,
+        data: {'description': prompt},
+        options: Options(
+          receiveTimeout: const Duration(seconds: 120),
+          sendTimeout: const Duration(seconds: 60),
+        ),
+      );
+      final data = response.data;
+      final reply = data['response'] as String? ?? 'No response generated';
+
+      if (mounted) {
+        setState(() {
+          _result = reply;
+          _isGenerating = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _result = 'Error: ${e.toString().replaceFirst('Exception: ', '')}';
+          _isGenerating = false;
+        });
+      }
     }
   }
 
@@ -45,6 +60,35 @@ class _CircuitScreenState extends ConsumerState<CircuitScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isWide = MediaQuery.of(context).size.width >= 900;
+
+    final mdStyle = MarkdownStyleSheet(
+      h1: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? DSColors.white : DSColors.grey900),
+      h2: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: isDark ? DSColors.white : DSColors.grey900),
+      h3: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? DSColors.white : DSColors.grey900),
+      p: TextStyle(fontSize: 14, height: 1.6, color: isDark ? DSColors.grey100 : DSColors.grey900),
+      code: TextStyle(
+        fontSize: 13, backgroundColor: isDark ? DSColors.surfaceDarkVariant : DSColors.grey100,
+        color: isDark ? DSColors.circuitCyan : DSColors.neonViolet,
+      ),
+      codeblockDecoration: BoxDecoration(
+        color: isDark ? DSColors.surfaceDarkVariant : DSColors.grey100,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      codeblockPadding: const EdgeInsets.all(12),
+      blockquoteDecoration: BoxDecoration(
+        border: Border(left: BorderSide(color: DSColors.circuitCyan, width: 3)),
+        color: isDark ? DSColors.circuitCyan.withValues(alpha: 0.08) : DSColors.circuitCyan.withValues(alpha: 0.05),
+      ),
+      blockquotePadding: const EdgeInsets.fromLTRB(12, 4, 8, 4),
+      tableHead: TextStyle(fontWeight: FontWeight.bold, color: isDark ? DSColors.white : DSColors.grey900),
+      tableBody: TextStyle(color: isDark ? DSColors.grey100 : DSColors.grey900),
+      tableBorder: TableBorder.all(color: isDark ? DSColors.grey600 : DSColors.grey300),
+      tableColumnWidth: const FlexColumnWidth(),
+      horizontalRuleDecoration: BoxDecoration(border: Border(top: BorderSide(color: isDark ? DSColors.grey600 : DSColors.grey300))),
+      strong: TextStyle(fontWeight: FontWeight.bold, color: isDark ? DSColors.white : DSColors.grey900),
+      a: TextStyle(color: DSColors.circuitCyan, decoration: TextDecoration.underline),
+    );
+
     return Scaffold(
       appBar: AppBar(title: const Text('Circuit Generator')),
       body: SingleChildScrollView(
@@ -105,11 +149,17 @@ class _CircuitScreenState extends ConsumerState<CircuitScreen> {
                           children: [
                             Icon(Icons.check_circle, color: DSColors.circuitCyan, size: 24),
                             const SizedBox(width: 8),
-                            Text('Circuit Generated', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                            Text('Generated Circuit', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
                           ],
                         ),
                         const SizedBox(height: 16),
-                        Text(_result!, style: TextStyle(fontSize: 14, height: 1.6, color: isDark ? DSColors.grey100 : DSColors.grey900)),
+                        MarkdownBody(
+                          data: _result!,
+                          styleSheet: mdStyle,
+                          selectable: true,
+                        ),
+                        const SizedBox(height: 8),
+                        CircuitVisualizer(markdown: _result!),
                       ],
                     ),
                   ),

@@ -44,7 +44,7 @@ class AIService:
         return await self._request("GET", "/api/v1/models/primary")
 
     async def chat(self, messages: list[dict], model: str | None = None) -> dict:
-        body = {"messages": messages, "max_tokens": 512}
+        body = {"messages": messages, "max_tokens": 2048}
         if model:
             body["model"] = model
         return await self._request("POST", "/api/v1/chat", json=body)
