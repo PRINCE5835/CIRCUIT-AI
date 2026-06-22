@@ -1,10 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.models.safety_report import SafetyReport
-from app.schemas.safety import SafetyReportCreate, SafetyReportUpdate, SafetyReportResponse, SafetyReportList
+from app.schemas.safety import (
+    SafetyReportCreate,
+    SafetyReportUpdate,
+    SafetyReportResponse,
+    SafetyReportList,
+)
 
 router = APIRouter()
 

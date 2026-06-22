@@ -4,8 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_db, get_current_user
 from app.models.source import SourceType, ContentType
 from app.schemas.source import (
-    SourceCreate, SourceUpdate, SourceResponse, SourceList,
-    ContentSourceCreate, ContentSourceResponse,
+    SourceCreate,
+    SourceUpdate,
+    SourceResponse,
+    SourceList,
+    ContentSourceCreate,
+    ContentSourceResponse,
 )
 from app.services.source_service import SourceService
 
@@ -62,7 +66,8 @@ async def get_source(source_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.patch("/{source_id}", response_model=SourceResponse)
 async def update_source(
-    source_id: int, data: SourceUpdate,
+    source_id: int,
+    data: SourceUpdate,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -86,6 +91,7 @@ async def delete_source(
 
 
 # ── Content Attribution ───────────────────────────────────────
+
 
 @router.post("/attributions", response_model=ContentSourceResponse, status_code=201)
 async def create_attribution(

@@ -29,14 +29,19 @@ async def export_project(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    circuits = (await db.execute(
-        select(Circuit).where(Circuit.project_id == project_id)
-    )).scalars().all()
+    circuits = (
+        (await db.execute(select(Circuit).where(Circuit.project_id == project_id))).scalars().all()
+    )
 
-    bom = (await db.execute(
-        select(ProjectComponent)
-        .where(ProjectComponent.project_id == project_id)
-    )).scalars().all()
+    bom = (
+        (
+            await db.execute(
+                select(ProjectComponent).where(ProjectComponent.project_id == project_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
 
     data = {
         "project": {

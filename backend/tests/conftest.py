@@ -8,7 +8,6 @@ from app.main import app
 from app.db.base import Base, get_session
 from app.core.config import settings
 
-
 TEST_DATABASE_URL = settings.database_url
 if "test" not in TEST_DATABASE_URL:
     TEST_DATABASE_URL = TEST_DATABASE_URL.replace("breadboard", "breadboard_test")
@@ -34,9 +33,7 @@ async def test_engine():
 
 @pytest.fixture
 async def test_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
-    session_factory = async_sessionmaker(
-        test_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    session_factory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
     async with session_factory() as session:
         yield session
 

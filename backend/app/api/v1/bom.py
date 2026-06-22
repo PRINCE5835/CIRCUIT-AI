@@ -1,11 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.models.project import Project
 from app.models.project_component import ProjectComponent
-from app.models.component import Component
 from app.schemas.bom import BOMItemCreate, BOMItemUpdate, BOMItemResponse, BOMResponse
 
 router = APIRouter()

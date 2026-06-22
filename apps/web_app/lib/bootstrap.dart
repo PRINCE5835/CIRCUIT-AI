@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
 import 'dart:html' as html;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:breadboard_shared/breadboard_shared.dart';

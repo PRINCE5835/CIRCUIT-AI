@@ -118,6 +118,7 @@ async def chat_stream(body: dict, current_user: User = Depends(get_current_user)
     async def _proxy_stream():
         import httpx as _httpx
         import json as _json
+
         ai_url = f"http://{settings.ai_engine_host}:{settings.ai_engine_port}/api/v1/chat"
         payload = {
             "messages": messages,
@@ -143,45 +144,68 @@ async def chat_stream(body: dict, current_user: User = Depends(get_current_user)
                                     token = data.get("token", "")
                                     if token:
                                         collected += token
-                                        payload = _json.dumps({'type': 'token', 'token': token})
+                                        payload = _json.dumps({"type": "token", "token": token})
                                         yield f"data: {payload}\n\n"
                                 elif t == "done":
                                     final_content = data.get("content", collected)
                                 elif t == "error":
-                                    yield f"data: {_json.dumps({'type': 'error', 'detail': data.get('detail', '')})}\n\n"
+                                    err = _json.dumps(
+                                        {"type": "error", "detail": data.get("detail", "")}
+                                    )
+                                    yield f"data: {err}\n\n"
                             except _json.JSONDecodeError:
                                 pass
         except Exception as e:
-            yield f"data: {_json.dumps({'type': 'error', 'detail': str(e)})}\n\n"
+            err = _json.dumps({"type": "error", "detail": str(e)})
+            yield f"data: {err}\n\n"
 
         result_content = final_content or collected
-        yield f"data: {_json.dumps({'type': 'done', 'content': result_content, 'meta': meta_info, 'conversation_id': conversation_id})}\n\n"
+        done_data = {
+            "type": "done",
+            "content": result_content,
+            "meta": meta_info,
+            "conversation_id": conversation_id,
+        }
+        yield f"data: {_json.dumps(done_data)}\n\n"
 
         if result_content:
             try:
                 from app.models.conversation import Conversation as _Conv
                 from app.db.base import async_session_factory as _factory
                 from app.db.repository import BaseRepository as _Repo
+
                 async with _factory() as db:
                     repo = _Repo(_Conv, db)
                     if conversation_id:
                         conv = await repo.get(conversation_id)
                         if conv and conv.user_id == current_user.id:
                             existing = list(conv.messages or [])
-                            existing.append({"role": "assistant", "content": result_content, "sources": meta_info.get("sources", [])})
+                            existing.append(
+                                {
+                                    "role": "assistant",
+                                    "content": result_content,
+                                    "sources": meta_info.get("sources", []),
+                                }
+                            )
                             await repo.update(conversation_id, messages=existing)
                             await db.commit()
                     else:
-                        last_user_msg = next((m["content"] for m in reversed(messages) if m.get("role") == "user"), "")
+                        last_user_msg = next(
+                            (m["content"] for m in reversed(messages) if m.get("role") == "user"),
+                            "",
+                        )
                         title = (last_user_msg or "New Chat")[:80]
                         all_msgs = list(messages)
                         all_msgs.append({"role": "assistant", "content": result_content})
                         conv = await repo.create(
-                            user_id=current_user.id, title=title,
-                            messages=all_msgs, model=model or settings.ollama_model,
+                            user_id=current_user.id,
+                            title=title,
+                            messages=all_msgs,
+                            model=model or settings.ollama_model,
                         )
                         await db.commit()
-                        yield f"data: {_json.dumps({'type': 'conv_id', 'conversation_id': conv.id})}\n\n"
+                        conv_data = _json.dumps({"type": "conv_id", "conversation_id": conv.id})
+                        yield f"data: {conv_data}\n\n"
             except Exception:
                 pass
 
@@ -237,7 +261,10 @@ async def transcribe(body: dict, current_user: User = Depends(get_current_user))
             language=body.get("language", "en"),
         )
     except Exception:
-        return {"message": "STT not configured yet", "detail": "Install Vosk or Whisper (pip install breadboard-ai-engine[stt,ml])"}
+        return {
+            "message": "STT not configured yet",
+            "detail": "Install Vosk or Whisper (pip install breadboard-ai-engine[stt,ml])",
+        }
 
 
 @router.post("/speech/tts")
@@ -261,15 +288,18 @@ async def detect_components(body: dict, current_user: User = Depends(get_current
         return await ai_service.detect_components(image_base64=image_base64)
     except Exception:
         prompt = (
-            "You are an expert electronics component analyzer. Carefully examine the provided image.\n\n"
+            "You are an expert electronics component analyzer. Carefully examine the "
+            "provided image.\n\n"
             "RULES:\n"
-            "- If NO circuit board, electronic components, or electronic parts are visible, respond ONLY with: "
-            "NO_CIRCUIT\n"
-            "- If the image is blurry, unclear, or too dark to identify components, respond ONLY with: "
-            "UNCLEAR\n"
+            "- If NO circuit board, electronic components, or electronic parts are visible, "
+            "respond ONLY with: NO_CIRCUIT\n"
+            "- If the image is blurry, unclear, or too dark to identify components, "
+            "respond ONLY with: UNCLEAR\n"
             "- If components ARE visible, list EACH component with as much detail as possible. "
-            "For each: name, type (resistor/capacitor/IC/transistor/etc), confidence, quantity, package type, markings.\n"
-            "Format: one component per line: name | type | confidence | quantity | package | markings\n"
+            "For each: name, type (resistor/capacitor/IC/transistor/etc), confidence, "
+            "quantity, package type, markings.\n"
+            "Format: one component per line: name | type | confidence | quantity | "
+            "package | markings\n"
             "Be precise about values (e.g., '220Ω Resistor' not just 'Resistor')."
         )
         result = await ai_service.ollama_generate(
@@ -279,17 +309,41 @@ async def detect_components(body: dict, current_user: User = Depends(get_current
         raw = result.get("response", "")
         raw_upper = raw.strip().upper()
         if raw_upper.startswith("NO_CIRCUIT"):
-            return {"status": "no_circuit", "message": "No electronic circuit or components detected in the image.", "model": "llava", "fallback": True}
+            return {
+                "status": "no_circuit",
+                "message": "No electronic circuit or components detected in the image.",
+                "model": "llava",
+                "fallback": True,
+            }
         if raw_upper.startswith("UNCLEAR"):
-            return {"status": "unclear", "message": "The image is not clear enough. Please capture a clearer photo with good lighting.", "model": "llava", "fallback": True}
+            return {
+                "status": "unclear",
+                "message": "The image is not clear enough. Please capture a clearer photo "
+                "with good lighting.",
+                "model": "llava",
+                "fallback": True,
+            }
         try:
             import json as _json
+
             components = _json.loads(raw)
             if isinstance(components, list):
-                return {"status": "success", "components": components, "model": "llava", "fallback": True}
+                return {
+                    "status": "success",
+                    "components": components,
+                    "model": "llava",
+                    "fallback": True,
+                }
         except Exception:
             pass
-        return {"status": "success", "components": [{"name": raw[:200], "type": "unknown", "confidence": 0.5, "quantity": 1}], "model": "llava", "fallback": True}
+        return {
+            "status": "success",
+            "components": [
+                {"name": raw[:200], "type": "unknown", "confidence": 0.5, "quantity": 1}
+            ],
+            "model": "llava",
+            "fallback": True,
+        }
 
 
 @router.post("/cost/estimate")

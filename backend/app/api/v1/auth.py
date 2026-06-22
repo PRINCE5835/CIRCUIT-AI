@@ -29,9 +29,9 @@ router = APIRouter()
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(
-        (User.email == body.email) | (User.username == body.username)
-    ))
+    result = await db.execute(
+        select(User).where((User.email == body.email) | (User.username == body.username))
+    )
     if result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

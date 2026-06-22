@@ -1,11 +1,11 @@
-// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
+// ignore_for_file: deprecated_member_use, avoid_web_libraries_in_flutter
 import 'dart:async';
 import 'dart:convert';
-import 'dart:html' as html;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:breadboard_shared/breadboard_shared.dart';
+import 'dart:html' as html;
 import 'component_info_sheet.dart';
 
 class CameraDialog extends StatefulWidget {

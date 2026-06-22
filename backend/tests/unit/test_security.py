@@ -1,5 +1,9 @@
-import pytest
-from app.core.security import hash_password, verify_password, create_access_token, decode_access_token
+from app.core.security import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    decode_access_token,
+)
 from app.core.config import settings
 
 
@@ -33,6 +37,7 @@ class TestJWTToken:
 
     def test_decode_expired_token(self):
         from datetime import timedelta
+
         token = create_access_token({"sub": "1"}, expires_delta=timedelta(seconds=-1))
         payload = decode_access_token(token)
         assert payload is None
@@ -54,5 +59,6 @@ class TestJWTToken:
     def test_token_algorithm(self):
         token = create_access_token({"sub": "1"})
         from jose import jwt
+
         header = jwt.get_unverified_header(token)
         assert header["alg"] == settings.jwt_algorithm

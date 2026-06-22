@@ -1,4 +1,5 @@
 """Wikipedia knowledge API routes."""
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,18 +40,18 @@ async def wiki_component_info(
         )
 
     try:
-        existing = await db.execute(
-            select(Source).where(Source.url == info["url"])
-        )
+        existing = await db.execute(select(Source).where(Source.url == info["url"]))
         if not existing.scalar_one_or_none():
-            db.add(Source(
-                title=info["wikipedia_title"],
-                url=info["url"],
-                source_type=SourceType.WIKIPEDIA.value,
-                priority=1,
-                language="en",
-                is_active=True,
-            ))
+            db.add(
+                Source(
+                    title=info["wikipedia_title"],
+                    url=info["url"],
+                    source_type=SourceType.WIKIPEDIA.value,
+                    priority=1,
+                    language="en",
+                    is_active=True,
+                )
+            )
             await db.flush()
     except Exception:
         pass

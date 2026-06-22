@@ -1,16 +1,17 @@
 from pydantic import ValidationError
 import pytest
-from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest, ForgotPasswordRequest, ResetPasswordRequest
+from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse
 from app.schemas.user import UserCreate, UserUpdate
 from app.schemas.project import ProjectCreate, ProjectUpdate
 from app.schemas.component import ComponentCreate, ComponentUpdate
 from app.schemas.conversation import ConversationCreate, AddMessageRequest
-from app.schemas.common import BaseSchema
 
 
 class TestAuthSchemas:
     def test_register_request_valid(self):
-        data = RegisterRequest(email="test@example.com", username="testuser", password="SecurePass123!")
+        data = RegisterRequest(
+            email="test@example.com", username="testuser", password="SecurePass123!"
+        )
         assert data.email == "test@example.com"
 
     def test_register_request_invalid_email(self):
@@ -36,8 +37,13 @@ class TestUserSchemas:
         assert data.username == "user"
 
     def test_user_create_optional_fields(self):
-        data = UserCreate(email="a@b.com", username="user", password="SecurePass123!",
-                          display_name="Test User", avatar_url="http://example.com/avatar.png")
+        data = UserCreate(
+            email="a@b.com",
+            username="user",
+            password="SecurePass123!",
+            display_name="Test User",
+            avatar_url="http://example.com/avatar.png",
+        )
         assert data.display_name == "Test User"
 
     def test_user_update_empty(self):
@@ -80,8 +86,12 @@ class TestComponentSchemas:
         assert data.datasheet_url is None
 
     def test_component_create_full(self):
-        data = ComponentCreate(name="2N2222", category="transistor",
-                               manufacturer="NXP", datasheet_url="http://example.com/ds.pdf")
+        data = ComponentCreate(
+            name="2N2222",
+            category="transistor",
+            manufacturer="NXP",
+            datasheet_url="http://example.com/ds.pdf",
+        )
         assert data.manufacturer == "NXP"
 
     def test_component_update(self):

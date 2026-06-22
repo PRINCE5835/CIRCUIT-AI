@@ -5,8 +5,12 @@ from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.models.conversation import Conversation
 from app.schemas.conversation import (
-    ConversationCreate, ConversationUpdate, ConversationResponse,
-    ConversationSummary, ConversationList, AddMessageRequest,
+    ConversationCreate,
+    ConversationUpdate,
+    ConversationResponse,
+    ConversationSummary,
+    ConversationList,
+    AddMessageRequest,
 )
 from app.db.repository import BaseRepository
 
@@ -35,7 +39,8 @@ async def list_conversations(
 ):
     repo = BaseRepository(Conversation, db)
     convs = await repo.get_multi(
-        skip=skip, limit=limit,
+        skip=skip,
+        limit=limit,
         filters={"user_id": current_user.id},
         order_by=Conversation.updated_at.desc(),
         search=q if q else None,
