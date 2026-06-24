@@ -1,4 +1,5 @@
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -35,8 +36,14 @@ target_metadata = Base.metadata
 
 config = context.config
 
-if not config.get_main_option("sqlalchemy.url"):
-    config.set_main_option("sqlalchemy.url", settings.database_url)
+# Prefer DATABASE_URL from env, then settings, then alembic.ini default
+_db_url = os.environ.get("DATABASE_URL") or settings.database_url
+# Ensure async driver prefix for async engines
+if _db_url.startswith("postgresql://") and "+asyncpg" not in _db_url:
+    _db_url = _db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+elif _db_url.startswith("mysql://") and "+aiomysql" not in _db_url:
+    _db_url = _db_url.replace("mysql://", "mysql+aiomysql://", 1)
+config.set_main_option("sqlalchemy.url", _db_url)
 
 
 def run_migrations_offline():
