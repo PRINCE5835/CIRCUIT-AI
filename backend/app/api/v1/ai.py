@@ -251,9 +251,8 @@ async def generate_circuit(
         }
     except Exception:
         prompt = (
-            "Build a technical setup:\n\n"
-            f"Description:\n{description}\n\n"
-            "List:\n1. Required parts\n2. Connections\n3. Function"
+            f"What parts are needed for: {description}\n\n"
+            "Describe each part and how they connect to work together."
         )
         return await ai_service.ollama_generate(prompt=prompt)
 

@@ -36,15 +36,46 @@
 - NEVER commit `.github/workflows/` (PAT lacks workflow scope)
 
 ## Deployment (Render + Vercel)
-- Backend: https://breadboard-backend.onrender.com (health: `/health`)
-- Frontend: https://breadboardai.vercel.app
-- Database: PostgreSQL (Render free tier, 1GB)
+- Backend: https://breadboard-backend.onrender.com (health: `/health`, AI: `/v1/ai/health`)
+- Frontend (prod): https://webapp-six-eta-87.vercel.app (Flutter Web)
+- Frontend (old): https://breadboardai.vercel.app
+- Vercel token: `$(VERCEL_TOKEN)`
+- Vercel project scope: `princenareshgamot-8750s-projects`
+- Database: PostgreSQL (Render free tier, 1GB, db name: `breadboard`)
+- Database URL (internal): `postgresql://breadboard:$(DB_PASSWORD)@dpg-d8tmg777f7vs73fa6blg-a/breadboard`
 - Build: `render-build.sh` installs deps; `render-start.sh` runs migrations + gunicorn
 - Blueprint: `render.yaml` defines web service + postgres db
-- CORS: Update `render.yaml` → `BACKEND_CORS_ORIGINS` for new frontend URLs
+- CORS origins: `https://breadboardai.vercel.app,https://webapp-six-eta-87.vercel.app` (set via env var `BACKEND_CORS_ORIGINS`)
+- Render env-var API: `PUT /v1/services/{serviceId}/env-vars/{key}` (single, safe) vs `PUT /env-vars` (bulk, wipes DATABASE_URL)
 - Flutter web build: `cd apps/web_app && flutter build web --dart-define=API_BASE_URL=https://breadboard-backend.onrender.com --release`
-- Vercel: Deploy `build/web` folder; or use `vercel.json` in repo
-- Render deploy: push to main → auto-deploy; or Manual Deploy from dashboard
+- Vercel deploy (prebuilt): `New-Item -ItemType Directory -Path .vercel/output/static -Force | Out-Null && Copy-Item build/web/* .vercel/output/static -Recurse -Force && vercel deploy --prebuilt --prod --token <TOKEN> --scope princenareshgamot-8750s-projects`
+- Render deploy: push to main → auto-deploy; or API: `POST /v1/services/{serviceId}/deploys`
+
+## Ollama Tunnel (serveo.net)
+- Local Ollama runs at `http://localhost:11434` with models: `llava:latest` (7B, vision), `qwen2.5:1.5b`
+- Node.js proxy (`node_proxy.js`) on port 19994 forwards HTTP `/api/*` to Ollama (`/api/generate`, `/api/chat`, `/api/tags`, etc.)
+- STABLE subdomain: `https://breadboard-ai.serveousercontent.com` → port 19994 → Ollama 11434 (SSH key registered)
+- SSH command: `ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -R breadboard-ai:80:127.0.0.1:19994 serveo.net`
+- Do NOT use `-N` flag (causes 502 Bad Gateway); do NOT use `-tt` flag
+- `tunnel.vbs` starts the tunnel invisibly (hidden window, no `-N` flag)
+- `start_tunnel.bat` starts proxy + tunnel in visible window (one-click)
+- To start: run `start_tunnel.bat` from project root (starts proxy on 19994, then SSH tunnel)
+- SSH key registered at https://console.serveo.net/ssh/keys:
+  - `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEMdjQk/o0/mizAClNHY7OI5O/HoW9wGu6Yx86PBCYBS`
+  - SHA256: `35rDBJV/U9MNawIqhRn6tFtC05TSPlKfQ13tmo6T9A4`
+- Render OLLAMA_HOST: `https://breadboard-ai.serveousercontent.com` (already set, no longer changes)
+- Trigger Render deploy after tunnel changes: `POST /v1/services/{serviceId}/deploys`
+- Render API key: `$(RENDER_API_KEY)`
+- Render Service ID: `srv-d8tmgsn7f7vs73fa74q0`
+- Tunnel health check: GET `https://breadboard-ai.serveousercontent.com/api/tags` → JSON model list
+- AI health check via backend: GET `https://breadboard-backend.onrender.com/v1/ai/health`
+
+## Flutter APK Build
+- APK built successfully at `apps/mobile_app/build/app/outputs/flutter-apk/app-release.apk` (52.9MB)
+- Fixes applied for Flutter 3.44.1 compatibility:
+  - `pubspec.yaml`: `audioplayers: ^5.2.1` → `^6.8.0` (compileSdk 33→34)
+  - `android/gradle.properties`: added `kotlin.incremental=false` (cross-drive Kotlin cache bug C: vs D:)
+- Known warnings (non-blocking): KGP applied by `audioplayers_android`, source/target value 8 obsolete
 
 ## Content Sourcing Rules
 - Priority source order: Wikipedia → Electronics Tutorials → Arduino Docs → Raspberry Pi Docs → SparkFun → Adafruit → Open Source Circuits
