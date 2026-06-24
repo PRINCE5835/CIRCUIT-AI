@@ -40,10 +40,16 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
             )
 
         from app.core.security import hash_password
+        pw = body.password
+        if not isinstance(pw, str):
+            raise HTTPException(500, detail=f"password is {type(pw)}")
+        pwh = hash_password(pw)
+        if not isinstance(pwh, str):
+            pwh = str(pwh)  # force to string
         user = User(
             email=body.email,
             username=body.username,
-            password_hash=hash_password(body.password),
+            password_hash=pwh,
             display_name=body.display_name or body.username,
         )
 
@@ -57,7 +63,7 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Registration failed: {type(e).__name__}: {str(e)[:200]}",
+            detail=f"Registration failed: {type(e).__name__}: {str(e)[:400]}",
         )
 
 
