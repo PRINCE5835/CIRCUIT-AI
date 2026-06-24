@@ -6,7 +6,7 @@ services:
     plan: free
     region: oregon
     buildCommand: chmod +x render-build.sh && ./render-build.sh
-    startCommand: cd backend && alembic upgrade head && gunicorn -w 2 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:$PORT --timeout 120
+    startCommand: cd backend && PYTHONPATH=. alembic upgrade head && gunicorn -w 2 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:$PORT --timeout 120
     healthCheckPath: /health
     envVars:
       - key: ENVIRONMENT

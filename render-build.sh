@@ -5,6 +5,3 @@ cd backend
 
 # Install dependencies
 pip install -r requirements/prod.txt
-
-# Run database migrations
-alembic upgrade head
