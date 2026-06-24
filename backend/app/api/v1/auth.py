@@ -29,27 +29,36 @@ router = APIRouter()
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(User).where((User.email == body.email) | (User.username == body.username))
-    )
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email or username already registered",
+    try:
+        result = await db.execute(
+            select(User).where((User.email == body.email) | (User.username == body.username))
+        )
+        if result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email or username already registered",
+            )
+
+        from app.core.security import hash_password
+        user = User(
+            email=body.email,
+            username=body.username,
+            password_hash=hash_password(body.password),
+            display_name=body.display_name or body.username,
         )
 
-    user = User(
-        email=body.email,
-        username=body.username,
-        password_hash=hash_password(body.password),
-        display_name=body.display_name or body.username,
-    )
+        db.add(user)
+        await db.flush()
+        await db.refresh(user)
 
-    db.add(user)
-    await db.flush()
-    await db.refresh(user)
-
-    return user
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Registration failed: {type(e).__name__}: {str(e)[:200]}",
+        )
 
 
 @router.post("/login", response_model=TokenResponse)
