@@ -17,10 +17,8 @@ class AppConfig {
   }
 
   static String _resolveUrl(String envKey, String androidUrl, String desktopUrl) {
-    try {
-      final fromEnv = Platform.environment[envKey];
-      if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
-    } catch (_) {}
+    const fromEnv = String.fromEnvironment(envKey);
+    if (fromEnv.isNotEmpty) return fromEnv;
     if (_isAndroid) return androidUrl;
     return desktopUrl;
   }

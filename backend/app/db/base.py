@@ -2,13 +2,24 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
 
-engine = create_async_engine(
-    settings.database_url,
-    echo=settings.debug,
-    pool_size=10,
-    max_overflow=20,
-    pool_recycle=3600,
-)
+is_sqlite = settings.database_url.startswith("sqlite")
+is_postgres = "postgresql" in settings.database_url
+
+engine_kwargs = {
+    "echo": settings.debug,
+}
+if is_sqlite:
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
+elif is_postgres:
+    engine_kwargs["pool_size"] = 5
+    engine_kwargs["max_overflow"] = 10
+else:
+    # MySQL
+    engine_kwargs["pool_size"] = 10
+    engine_kwargs["max_overflow"] = 20
+    engine_kwargs["pool_recycle"] = 3600
+
+engine = create_async_engine(settings.database_url, **engine_kwargs)
 
 async_session_factory = async_sessionmaker(
     engine,
@@ -34,8 +45,9 @@ async def get_session():
 
 
 async def init_db():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    if settings.environment == "development":
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
 
 async def close_db():

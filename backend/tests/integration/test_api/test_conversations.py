@@ -233,3 +233,41 @@ async def test_add_message(client):
     assert len(data["messages"]) == 1
     assert data["messages"][0]["role"] == "user"
     assert data["messages"][0]["content"] == "Hello!"
+
+
+@pytest.mark.asyncio
+async def test_update_conversation_full(client):
+    await client.post(
+        "/auth/register",
+        json={
+            "email": "fullup@example.com",
+            "username": "fullupuser",
+            "password": "SecurePass123!",
+        },
+    )
+    login = (
+        await client.post(
+            "/auth/login",
+            json={"email": "fullup@example.com", "password": "SecurePass123!"},
+        )
+    ).json()
+    headers = {"Authorization": f"Bearer {login['access_token']}"}
+
+    conv = (
+        await client.post(
+            "/conversations", json={"title": "Original Title"}, headers=headers
+        )
+    ).json()
+
+    response = await client.put(
+        f"/conversations/{conv['id']}",
+        json={
+            "title": "Updated Title",
+            "messages": [{"role": "user", "content": "Hello"}],
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["title"] == "Updated Title"
+    assert len(data["messages"]) >= 1

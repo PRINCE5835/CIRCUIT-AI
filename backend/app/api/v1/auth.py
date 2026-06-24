@@ -138,3 +138,4 @@ async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(
         )
 
     user.password_hash = hash_password(body.new_password)
+    await db.flush()

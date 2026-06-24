@@ -35,6 +35,7 @@ class ComponentResponse(BaseSchema):
     datasheet_url: str | None
     image_url: str | None
     created_at: datetime
+    updated_at: datetime
 
 
 class ComponentList(BaseSchema):

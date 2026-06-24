@@ -40,6 +40,7 @@ async def delete_account(
 async def get_user(
     user_id: int,
     db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()

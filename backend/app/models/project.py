@@ -25,3 +25,4 @@ class Project(Base):
     user = relationship("User", back_populates="projects")
     circuits = relationship("Circuit", back_populates="project")
     cost_estimates = relationship("CostEstimate", back_populates="project")
+    bom_items = relationship("ProjectComponent", back_populates="project")

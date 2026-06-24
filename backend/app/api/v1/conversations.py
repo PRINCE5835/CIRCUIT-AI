@@ -11,6 +11,7 @@ from app.schemas.conversation import (
     ConversationSummary,
     ConversationList,
     AddMessageRequest,
+    UpdateTitleRequest,
 )
 from app.db.repository import BaseRepository
 
@@ -116,6 +117,8 @@ async def update_conversation(
     kwargs = {k: v for k, v in body.model_dump(exclude_none=True).items() if v is not None}
     if kwargs:
         conv = await repo.update(conversation_id, **kwargs)
+    if conv is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
     return ConversationResponse(
         id=conv.id,
         user_id=conv.user_id,
@@ -158,6 +161,8 @@ async def add_message(
         conv = await repo.update(conversation_id, messages=messages, title=title)
     else:
         conv = await repo.update(conversation_id, messages=messages)
+    if conv is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
     return ConversationResponse(
         id=conv.id,
         user_id=conv.user_id,
@@ -172,16 +177,13 @@ async def add_message(
 @router.put("/{conversation_id}/title")
 async def update_title(
     conversation_id: int,
-    body: dict,
+    body: UpdateTitleRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    title = body.get("title", "")
-    if not title:
-        raise HTTPException(status_code=400, detail="Title is required")
     repo = BaseRepository(Conversation, db)
     conv = await repo.get(conversation_id)
     if not conv or conv.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    await repo.update(conversation_id, title=title)
+    await repo.update(conversation_id, title=body.title)
     return {"status": "ok"}

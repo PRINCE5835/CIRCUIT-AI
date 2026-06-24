@@ -1,3 +1,4 @@
+from typing import cast
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,7 +35,7 @@ async def list_listings(
     service = MarketplaceService(db)
     items = await service.get_active(skip=skip, limit=limit)
     total = await service.count_active()
-    return MarketplaceListingList(items=items, total=total)
+    return MarketplaceListingList(items=cast(list[MarketplaceListingResponse], items), total=total)
 
 
 @router.get("/{listing_id}", response_model=MarketplaceListingResponse)

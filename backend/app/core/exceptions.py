@@ -1,3 +1,4 @@
+from typing import Callable
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
@@ -40,7 +41,7 @@ class RateLimitException(AppException):
         super().__init__(message=message, code="rate_limited", status_code=429)
 
 
-_EXCEPTION_HANDLERS: dict[type[Exception], callable] = {}
+_EXCEPTION_HANDLERS: dict[type[Exception], Callable] = {}
 
 
 def _make_handler(cls: type[AppException]):

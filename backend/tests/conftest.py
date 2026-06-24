@@ -10,7 +10,9 @@ from app.core.config import settings
 
 TEST_DATABASE_URL = settings.database_url
 if "test" not in TEST_DATABASE_URL:
-    TEST_DATABASE_URL = TEST_DATABASE_URL.replace("breadboard", "breadboard_test")
+    # Replace only the database name (last path segment), not username
+    parts = TEST_DATABASE_URL.rsplit("/", 1)
+    TEST_DATABASE_URL = f"{parts[0]}/breadboard_test"
 
 
 @pytest.fixture(scope="session")

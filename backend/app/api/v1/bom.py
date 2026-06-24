@@ -18,7 +18,7 @@ async def _get_project_or_404(project_id: int, user_id: int, db: AsyncSession) -
     return project
 
 
-def _item_response(item: ProjectComponent) -> dict:
+def _item_response(item: ProjectComponent) -> BOMItemResponse:
     return BOMItemResponse(
         id=item.id,
         project_id=item.project_id,

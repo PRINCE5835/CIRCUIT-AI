@@ -1,4 +1,4 @@
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import Base
@@ -17,7 +17,7 @@ class BaseService(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
     async def create(self, schema: CreateSchemaType) -> ModelType:
         data = schema.model_dump(exclude_unset=True) if hasattr(schema, "model_dump") else schema
-        return await self.repo.create(**data)
+        return await self.repo.create(**cast(dict, data))
 
     async def get(self, id: int) -> ModelType:
         instance = await self.repo.get(id)
@@ -32,7 +32,7 @@ class BaseService(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
     async def update(self, id: int, schema: UpdateSchemaType) -> ModelType:
         data = schema.model_dump(exclude_unset=True) if hasattr(schema, "model_dump") else schema
-        instance = await self.repo.update(id, **data)
+        instance = await self.repo.update(id, **cast(dict, data))
         if instance is None:
             raise NotFoundException(self.model.__name__, id)
         return instance

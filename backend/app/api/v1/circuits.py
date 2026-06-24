@@ -1,3 +1,4 @@
+from typing import cast
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,9 +31,9 @@ async def list_circuits(
     service = CircuitService(db)
     if project_id:
         items = await service.get_by_project(project_id)
-        return CircuitList(items=items, total=len(items))
+        return CircuitList(items=cast(list[CircuitResponse], items), total=len(items))
     items = await service.get_user_circuits(current_user.id, skip=skip, limit=limit)
-    return CircuitList(items=items, total=len(items))
+    return CircuitList(items=cast(list[CircuitResponse], items), total=len(items))
 
 
 @router.get("/{circuit_id}", response_model=CircuitResponse)

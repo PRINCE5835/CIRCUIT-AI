@@ -7,6 +7,21 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.core.config import settings
 from app.db.base import Base
 
+# Import all models so Alembic autogenerate can detect changes
+from app.models import (  # noqa: F401
+    user,
+    project,
+    circuit,
+    component,
+    marketplace_listing,
+    voice_session,
+    cost_estimate,
+    safety_report,
+    conversation,
+    source,
+    project_component,
+)
+
 target_metadata = Base.metadata
 
 config = context.config

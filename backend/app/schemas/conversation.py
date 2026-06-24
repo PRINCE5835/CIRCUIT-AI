@@ -14,6 +14,10 @@ class ConversationUpdate(BaseSchema):
     model: str | None = None
 
 
+class UpdateTitleRequest(BaseSchema):
+    title: str
+
+
 class AddMessageRequest(BaseSchema):
     role: str
     content: str

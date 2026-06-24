@@ -1,3 +1,4 @@
+from typing import cast
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,7 +30,7 @@ async def list_projects(
     service = ProjectService(db)
     items = await service.get_user_projects(current_user.id, skip=skip, limit=limit)
     total = await service.count_user_projects(current_user.id)
-    return ProjectList(items=items, total=total)
+    return ProjectList(items=cast(list[ProjectResponse], items), total=total)
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)

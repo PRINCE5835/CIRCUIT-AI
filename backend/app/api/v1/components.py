@@ -1,7 +1,9 @@
+from typing import cast
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_db
+from app.core.dependencies import get_db, get_current_user
+from app.models.user import User
 from app.schemas.component import ComponentCreate, ComponentUpdate, ComponentResponse, ComponentList
 from app.services.component_service import ComponentService
 
@@ -12,6 +14,7 @@ router = APIRouter()
 async def create_component(
     body: ComponentCreate,
     db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     service = ComponentService(db)
     return await service.create(body)
@@ -30,7 +33,7 @@ async def list_components(
     else:
         items = await service.get_multi(skip=skip, limit=limit)
     total = await service.count()
-    return ComponentList(items=items, total=total)
+    return ComponentList(items=cast(list[ComponentResponse], items), total=total)
 
 
 @router.get("/{component_id}", response_model=ComponentResponse)
@@ -50,6 +53,7 @@ async def update_component(
     component_id: int,
     body: ComponentUpdate,
     db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     service = ComponentService(db)
     updated = await service.update(component_id, body)
@@ -62,6 +66,7 @@ async def update_component(
 async def delete_component(
     component_id: int,
     db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     service = ComponentService(db)
     deleted = await service.delete(component_id)

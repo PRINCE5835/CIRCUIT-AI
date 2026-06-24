@@ -8,11 +8,18 @@ class ProjectComponent(Base):
     __tablename__ = "project_components"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    project_id: Mapped[int] = mapped_column(Integer, ForeignKey("projects.id", ondelete="CASCADE"))
-    component_id: Mapped[int] = mapped_column(Integer, ForeignKey("components.id"))
+    project_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    component_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("components.id"), index=True
+    )
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     notes: Mapped[str | None] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
 
-    project = relationship("Project", backref="bom_items")
+    project = relationship("Project", back_populates="bom_items")
     component = relationship("Component")

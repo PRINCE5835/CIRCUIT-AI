@@ -17,3 +17,4 @@ class CostEstimateResponse(BaseSchema):
     currency: str
     breakdown_json: dict | None
     created_at: datetime
+    updated_at: datetime

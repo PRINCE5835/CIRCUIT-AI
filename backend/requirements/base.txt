@@ -11,8 +11,13 @@ httpx>=0.26.0
 redis>=5.0.0
 slowapi>=0.1.9
 httptools>=0.6.0
-aiomysql>=0.2.0
-asyncmy>=0.2.9
 greenlet>=3.0.3
 cryptography>=42.0.0
+
+# MySQL support
+aiomysql>=0.2.0
 pymysql>=1.1.0
+
+# PostgreSQL support (for Render)
+asyncpg>=0.29.0
+psycopg2-binary>=2.9.9

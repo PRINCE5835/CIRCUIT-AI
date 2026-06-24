@@ -16,6 +16,7 @@ from .llm.prompts.learning_tutor import LEARNING_TUTOR_SYSTEM
 from .llm.prompts.component_info import COMPONENT_INFO_SYSTEM
 from .speech.stt.vosk_handler import handler as vosk_handler
 from .speech.stt.whisper_handler import handler as whisper_handler
+from .speech.tts import tts
 from .classifier import classify, QueryType
 from .content import sources as content_sources
 
@@ -78,15 +79,26 @@ app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     lifespan=lifespan,
+    debug=settings.is_debug,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if settings.environment == "production":
+    cors_origins = settings.backend_cors_origins.split(",") if hasattr(settings, "backend_cors_origins") else ["http://localhost:8000"]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 @app.get("/")
@@ -111,7 +123,7 @@ async def health(request: Request):
         "models_available": len(registry.list_available()),
         "whisper_loaded": whisper_handler._available,
         "vosk_loaded": vosk_handler._available,
-        "piper_available": False,
+        "piper_available": tts.is_available(),
     }
 
 
@@ -291,7 +303,25 @@ async def transcribe(body: dict):
 
 @app.post("/api/v1/speech/tts")
 async def synthesize(body: dict):
-    return {"message": "TTS not configured yet"}
+    text = body.get("text", "")
+    voice = body.get("voice", settings.piper_default_voice)
+
+    if not text:
+        raise HTTPException(status_code=400, detail="Text is required")
+
+    if not tts.is_available():
+        raise HTTPException(status_code=501, detail="TTS not available: Piper binary not found")
+
+    audio = await tts.synthesize(text, voice=voice)
+    if audio is None:
+        raise HTTPException(status_code=500, detail="TTS synthesis failed")
+
+    from fastapi.responses import Response
+    return Response(
+        content=audio,
+        media_type="audio/wav",
+        headers={"Content-Disposition": f'attachment; filename="speech.wav"'},
+    )
 
 
 @app.post("/api/v1/vision/detect")

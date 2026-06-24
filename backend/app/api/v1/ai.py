@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,6 +8,16 @@ from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.models.conversation import Conversation
 from app.db.repository import BaseRepository
+from app.schemas.ai import (
+    ChatRequest,
+    ChatStreamRequest,
+    GenerateRequest,
+    CircuitGenerateRequest,
+    STTRequest,
+    TTSRequest,
+    VisionDetectRequest,
+    CostEstimateRequest,
+)
 
 router = APIRouter()
 
@@ -38,16 +48,13 @@ async def primary_model():
 
 @router.post("/chat")
 async def chat(
-    body: dict,
+    body: ChatRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    messages = body.get("messages", [])
-    if not messages:
-        raise HTTPException(status_code=400, detail="Messages are required")
-
-    model = body.get("model")
-    conversation_id = body.get("conversation_id")
+    messages = body.messages
+    model = body.model
+    conversation_id = body.conversation_id
     repo = BaseRepository(Conversation, db)
 
     try:
@@ -107,13 +114,10 @@ async def chat(
 
 
 @router.post("/chat/stream")
-async def chat_stream(body: dict, current_user: User = Depends(get_current_user)):
-    messages = body.get("messages", [])
-    if not messages:
-        raise HTTPException(status_code=400, detail="Messages are required")
-
-    model = body.get("model")
-    conversation_id = body.get("conversation_id")
+async def chat_stream(body: ChatStreamRequest, current_user: User = Depends(get_current_user)):
+    messages = body.messages
+    model = body.model
+    conversation_id = body.conversation_id
 
     async def _proxy_stream():
         import httpx as _httpx
@@ -213,12 +217,9 @@ async def chat_stream(body: dict, current_user: User = Depends(get_current_user)
 
 
 @router.post("/generate")
-async def generate(body: dict, current_user: User = Depends(get_current_user)):
-    prompt = body.get("prompt", "")
-    if not prompt:
-        raise HTTPException(status_code=400, detail="Prompt is required")
-
-    model = body.get("model")
+async def generate(body: GenerateRequest, current_user: User = Depends(get_current_user)):
+    prompt = body.prompt
+    model = body.model
     try:
         result = await ai_service.generate(prompt=prompt, model=model)
         return {"response": result.get("response", ""), "model": model or settings.ollama_model}
@@ -231,10 +232,10 @@ async def generate(body: dict, current_user: User = Depends(get_current_user)):
 
 
 @router.post("/circuit/generate")
-async def generate_circuit(body: dict, current_user: User = Depends(get_current_user)):
-    description = body.get("description", "")
-    if not description:
-        raise HTTPException(status_code=400, detail="Description is required")
+async def generate_circuit(
+    body: CircuitGenerateRequest, current_user: User = Depends(get_current_user)
+):
+    description = body.description
 
     try:
         result = await ai_service.generate_circuit(description=description)
@@ -254,11 +255,11 @@ async def generate_circuit(body: dict, current_user: User = Depends(get_current_
 
 
 @router.post("/speech/stt")
-async def transcribe(body: dict, current_user: User = Depends(get_current_user)):
+async def transcribe(body: STTRequest, current_user: User = Depends(get_current_user)):
     try:
         return await ai_service.transcribe(
-            audio_base64=body.get("audio", ""),
-            language=body.get("language", "en"),
+            audio_base64=body.audio,
+            language=body.language,
         )
     except Exception:
         return {
@@ -268,21 +269,21 @@ async def transcribe(body: dict, current_user: User = Depends(get_current_user))
 
 
 @router.post("/speech/tts")
-async def synthesize(body: dict, current_user: User = Depends(get_current_user)):
+async def synthesize(body: TTSRequest, current_user: User = Depends(get_current_user)):
     try:
         return await ai_service.synthesize(
-            text=body.get("text", ""),
-            voice=body.get("voice", "default"),
+            text=body.text,
+            voice=body.voice,
         )
     except Exception:
         return {"message": "TTS not configured yet"}
 
 
 @router.post("/vision/detect")
-async def detect_components(body: dict, current_user: User = Depends(get_current_user)):
-    image_base64 = body.get("image", "")
-    if not image_base64:
-        raise HTTPException(status_code=400, detail="image is required")
+async def detect_components(
+    body: VisionDetectRequest, current_user: User = Depends(get_current_user)
+):
+    image_base64 = body.image
 
     try:
         return await ai_service.detect_components(image_base64=image_base64)
@@ -347,10 +348,10 @@ async def detect_components(body: dict, current_user: User = Depends(get_current
 
 
 @router.post("/cost/estimate")
-async def estimate_cost(body: dict, current_user: User = Depends(get_current_user)):
+async def estimate_cost(body: CostEstimateRequest, current_user: User = Depends(get_current_user)):
     try:
         return await ai_service.estimate_cost(
-            components=body.get("components", []),
+            components=body.components,
         )
     except Exception:
         return {"message": "Cost estimation not configured yet"}

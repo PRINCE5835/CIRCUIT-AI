@@ -28,7 +28,9 @@ def create_app() -> FastAPI:
 
     limiter = Limiter(key_func=get_remote_address)
     app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_exception_handler(
+        RateLimitExceeded, _rate_limit_exceeded_handler  # type: ignore[arg-type]
+    )
 
     app.add_middleware(
         CORSMiddleware,
@@ -39,6 +41,11 @@ def create_app() -> FastAPI:
     )
 
     register_exception_handlers(app)
+
+    if settings.prometheus_enabled:
+        from prometheus_client import make_asgi_app
+        metrics_app = make_asgi_app()
+        app.mount("/metrics", metrics_app)
 
     from app.api.v1 import api_router
 

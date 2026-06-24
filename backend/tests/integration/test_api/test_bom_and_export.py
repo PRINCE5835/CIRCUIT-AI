@@ -32,6 +32,7 @@ async def test_add_bom_item(client):
                 "name": "Resistor BOM",
                 "category": "resistor",
             },
+            headers=headers,
         )
     ).json()
 
@@ -74,8 +75,16 @@ async def test_list_bom(client):
     headers = {"Authorization": f"Bearer {token}"}
 
     proj = (await client.post("/projects", json={"title": "BOM List Proj"}, headers=headers)).json()
-    c1 = (await client.post("/components", json={"name": "C1", "category": "resistor"})).json()
-    c2 = (await client.post("/components", json={"name": "C2", "category": "capacitor"})).json()
+    c1 = (
+        await client.post(
+            "/components", json={"name": "C1", "category": "resistor"}, headers=headers
+        )
+    ).json()
+    c2 = (
+        await client.post(
+            "/components", json={"name": "C2", "category": "capacitor"}, headers=headers
+        )
+    ).json()
 
     await client.post(
         f"/projects/{proj['id']}/bom",
@@ -119,7 +128,9 @@ async def test_delete_bom_item(client):
 
     proj = (await client.post("/projects", json={"title": "BOM Del Proj"}, headers=headers)).json()
     comp = (
-        await client.post("/components", json={"name": "Delete Me", "category": "resistor"})
+        await client.post(
+            "/components", json={"name": "Delete Me", "category": "resistor"}, headers=headers
+        )
     ).json()
     item = (
         await client.post(
@@ -157,7 +168,9 @@ async def test_export_project(client):
 
     proj = (await client.post("/projects", json={"title": "Export Me"}, headers=headers)).json()
     comp = (
-        await client.post("/components", json={"name": "Exp Comp", "category": "resistor"})
+        await client.post(
+            "/components", json={"name": "Exp Comp", "category": "resistor"}, headers=headers
+        )
     ).json()
     await client.post(
         f"/projects/{proj['id']}/bom",
@@ -170,3 +183,47 @@ async def test_export_project(client):
     data = response.json()
     assert data["title"] == "Export Me"
     assert "bom" in data
+
+
+@pytest.mark.asyncio
+async def test_update_bom_item(client):
+    await client.post(
+        "/auth/register",
+        json={
+            "email": "bomupd@example.com",
+            "username": "bomupduser",
+            "password": "SecurePass123!",
+        },
+    )
+    login = (
+        await client.post(
+            "/auth/login",
+            json={"email": "bomupd@example.com", "password": "SecurePass123!"},
+        )
+    ).json()
+    token = login["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    proj = (await client.post("/projects", json={"title": "BOM Update"}, headers=headers)).json()
+    comp = (
+        await client.post(
+            "/components", json={"name": "Update Comp", "category": "resistor"}, headers=headers
+        )
+    ).json()
+    item = (
+        await client.post(
+            f"/projects/{proj['id']}/bom",
+            json={"component_id": comp["id"], "quantity": 2, "notes": "Initial"},
+            headers=headers,
+        )
+    ).json()
+
+    response = await client.patch(
+        f"/projects/{proj['id']}/bom/{item['id']}",
+        json={"quantity": 10, "notes": "Updated notes"},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["quantity"] == 10
+    assert data["notes"] == "Updated notes"

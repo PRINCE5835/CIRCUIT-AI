@@ -28,7 +28,7 @@ def upgrade() -> None:
         sa.Column(
             "updated_at",
             sa.DateTime(),
-            server_default=sa.text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("email"),
@@ -76,7 +76,7 @@ def upgrade() -> None:
         sa.Column(
             "updated_at",
             sa.DateTime(),
-            server_default=sa.text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
@@ -102,7 +102,7 @@ def upgrade() -> None:
         sa.Column(
             "updated_at",
             sa.DateTime(),
-            server_default=sa.text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.ForeignKeyConstraint(["project_id"], ["projects.id"], ondelete="SET NULL"),
@@ -132,7 +132,7 @@ def upgrade() -> None:
         sa.Column(
             "updated_at",
             sa.DateTime(),
-            server_default=sa.text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.ForeignKeyConstraint(["seller_id"], ["users.id"], ondelete="CASCADE"),

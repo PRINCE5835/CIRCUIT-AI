@@ -8,8 +8,8 @@ same schema.
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = "002"
-down_revision: str | None = "001"
+revision: str = "003"
+down_revision: str | None = "002"
 branch_labels: str | None = None
 depends_on: str | None = None
 
@@ -36,7 +36,7 @@ def upgrade() -> None:
         sa.Column(
             "updated_at",
             sa.DateTime(),
-            server_default=sa.text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("url", name="uk_source_url"),

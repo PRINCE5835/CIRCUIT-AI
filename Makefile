@@ -60,11 +60,25 @@ test:
 docker-up:
 	docker-compose -f infrastructure/docker/docker-compose.yml up -d
 
+docker-up-prod:
+	docker-compose -f infrastructure/docker/docker-compose.yml -f infrastructure/docker/docker-compose.prod.yml up -d
+
 docker-down:
 	docker-compose -f infrastructure/docker/docker-compose.yml down
 
+setup-ssl:
+	chmod +x infrastructure/scripts/setup_ssl.sh && ./infrastructure/scripts/setup_ssl.sh
+
+download-models:
+	chmod +x infrastructure/scripts/download_models.sh && ./infrastructure/scripts/download_models.sh
+
+ifeq ($(OS),Windows_NT)
+clean:
+	@if exist . rmdir /s /q __pycache__ 2>nul & rmdir /s /q .pytest_cache 2>nul & rmdir /s /q *.egg-info 2>nul & del /s /q *.pyc 2>nul || true
+else
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name *.egg-info -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name *.pyc -delete 2>/dev/null || true
+endif

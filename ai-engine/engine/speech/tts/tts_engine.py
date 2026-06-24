@@ -9,7 +9,7 @@ import numpy as np
 from pathlib import Path
 from typing import Optional
 from .voice_profile import VoiceProfile, get_profile
-from ..core.config import settings
+from engine.core.config import settings
 
 logger = logging.getLogger(__name__)
 

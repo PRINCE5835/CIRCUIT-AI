@@ -1,20 +1,21 @@
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 
 
 class Settings(BaseSettings):
     app_name: str = "BreadBoard AI"
     app_version: str = "0.1.0"
     environment: str = "development"
-    debug: bool = True
+    debug: bool = False
     log_level: str = "INFO"
 
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000
-    backend_secret_key: str = "change-me-to-a-random-secret"
-    backend_cors_origins: str = "*"
+    backend_secret_key: str = ""
+    backend_cors_origins: str = "http://localhost:8080,http://localhost:5000"
     backend_rate_limit: str = "100/minute"
 
-    database_url: str = "mysql+aiomysql://breadboard:breadboard@localhost:3306/breadboard"
+    database_url: str = "postgresql+asyncpg://breadboard:breadboard@localhost:5432/breadboard"
 
     ai_engine_host: str = "127.0.0.1"
     ai_engine_port: int = 8001
@@ -28,7 +29,7 @@ class Settings(BaseSettings):
     yolo_model_path: str = "./engine/models/yolo/"
     ocr_model_path: str = "./engine/models/ocr/"
 
-    jwt_secret_key: str = "change-me-to-a-random-jwt-secret"
+    jwt_secret_key: str = ""
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 30
     jwt_refresh_token_expire_days: int = 7
@@ -39,7 +40,24 @@ class Settings(BaseSettings):
     sentry_dsn: str = ""
     prometheus_enabled: bool = False
 
-    model_config = {"env_file": ".env", "case_sensitive": False, "extra": "ignore"}
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": False,
+        "extra": "ignore",
+        "env_file_encoding": "utf-8",
+    }
+
+    @field_validator("backend_secret_key", "jwt_secret_key")
+    @classmethod
+    def validate_secrets(cls, v: str) -> str:
+        if not v:
+            raise ValueError("Secret key must be set to a secure random value")
+        if v in ("change-me", "REPLACE_WITH_SECURE_RANDOM_64_HEX_CHARS"):
+            raise ValueError(
+                "Secret key must be set to a secure random value. "
+                "Generate one with: openssl rand -hex 32"
+            )
+        return v
 
 
 settings = Settings()

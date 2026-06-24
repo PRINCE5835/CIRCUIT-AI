@@ -26,6 +26,7 @@ class SafetyReportResponse(BaseSchema):
     severity: str | None
     recommendations: str | None
     created_at: datetime
+    updated_at: datetime
 
 
 class SafetyReportList(BaseSchema):

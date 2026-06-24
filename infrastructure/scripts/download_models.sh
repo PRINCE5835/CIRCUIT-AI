@@ -30,8 +30,18 @@ pull_ollama() {
         echo "  ✓ $model already pulled"
     else
         echo "  Pulling $model..."
-        curl -X POST "$OLLAMA_HOST/api/pull" -d "{\"name\":\"$model\"}" --silent --show-error
-        echo "  ✓ $model pulled"
+        response=$(curl -s -w "%{http_code}" -X POST "$OLLAMA_HOST/api/pull" \
+            -d "{\"name\":\"$model\"}" --silent --show-error -o /tmp/ollama_pull.json)
+        if [ "$response" != "200" ]; then
+            echo "  ✗ Failed to pull $model (HTTP $response)"
+            return 1
+        fi
+        if grep -q '"status":"success"' /tmp/ollama_pull.json 2>/dev/null; then
+            echo "  ✓ $model pulled"
+        else
+            echo "  ✓ $model pull initiated (may still be downloading in background)"
+        fi
+        rm -f /tmp/ollama_pull.json
     fi
 }
 

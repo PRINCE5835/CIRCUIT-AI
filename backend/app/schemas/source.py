@@ -1,10 +1,12 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import Field
+from .common import BaseSchema
+
 
 # ── Source ────────────────────────────────────────────────────
 
 
-class SourceBase(BaseModel):
+class SourceBase(BaseSchema):
     title: str = Field(..., max_length=255)
     url: str = Field(..., max_length=1000)
     source_type: str = Field(...)
@@ -20,7 +22,7 @@ class SourceCreate(SourceBase):
     pass
 
 
-class SourceUpdate(BaseModel):
+class SourceUpdate(BaseSchema):
     title: str | None = None
     url: str | None = None
     source_type: str | None = None
@@ -38,10 +40,8 @@ class SourceResponse(SourceBase):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {"from_attributes": True}
 
-
-class SourceList(BaseModel):
+class SourceList(BaseSchema):
     items: list[SourceResponse]
     total: int
 
@@ -49,7 +49,7 @@ class SourceList(BaseModel):
 # ── ContentSource (junction) ──────────────────────────────────
 
 
-class ContentSourceBase(BaseModel):
+class ContentSourceBase(BaseSchema):
     source_id: int
     content_type: str = Field(...)
     content_id: int
@@ -68,10 +68,8 @@ class ContentSourceResponse(ContentSourceBase):
     created_at: datetime
     source: SourceResponse | None = None
 
-    model_config = {"from_attributes": True}
 
-
-class ContentSourceList(BaseModel):
+class ContentSourceList(BaseSchema):
     items: list[ContentSourceResponse]
     total: int
 
@@ -79,7 +77,7 @@ class ContentSourceList(BaseModel):
 # ── Attribution (for AI output) ───────────────────────────────
 
 
-class SourceAttribution(BaseModel):
+class SourceAttribution(BaseSchema):
     """Structured attribution for AI-generated content."""
 
     source_title: str
@@ -90,7 +88,7 @@ class SourceAttribution(BaseModel):
     image_url: str | None = None
 
 
-class AttributedContent(BaseModel):
+class AttributedContent(BaseSchema):
     """Wrapper for any AI-generated content with source links."""
 
     content: str

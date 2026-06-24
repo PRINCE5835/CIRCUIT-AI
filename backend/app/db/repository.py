@@ -20,7 +20,7 @@ class BaseRepository(Generic[ModelType]):
         return instance
 
     async def get(self, id: Any) -> Optional[ModelType]:
-        stmt = select(self.model).where(self.model.id == id)
+        stmt = select(self.model).where(getattr(self.model, "id") == id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 

@@ -1,3 +1,4 @@
+from typing import cast
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -52,7 +53,7 @@ async def list_safety_reports(
     if circuit_id is not None:
         count_stmt = count_stmt.where(SafetyReport.circuit_id == circuit_id)
     total = len((await db.execute(count_stmt)).scalars().all())
-    return SafetyReportList(items=list(items), total=total)
+    return SafetyReportList(items=cast(list[SafetyReportResponse], items), total=total)
 
 
 @router.get("/{report_id}", response_model=SafetyReportResponse)
