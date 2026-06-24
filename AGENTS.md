@@ -30,8 +30,21 @@
 - Python: black (100 chars), isort, flake8, mypy
 - Dart: flutter_lints, Dart fix
 - No paid APIs — all AI via Ollama + local models
-- MySQL 8 with async SQLAlchemy (aiomysql)
+- Database: PostgreSQL (production/Render), MySQL (local Docker), SQLite (tests)
 - Feature-first Clean Architecture in Flutter
+- `DATABASE_URL` auto-detects async driver: `postgresql://` → +asyncpg, `mysql://` → +aiomysql
+- NEVER commit `.github/workflows/` (PAT lacks workflow scope)
+
+## Deployment (Render + Vercel)
+- Backend: https://breadboard-backend.onrender.com (health: `/health`)
+- Frontend: https://breadboardai.vercel.app
+- Database: PostgreSQL (Render free tier, 1GB)
+- Build: `render-build.sh` installs deps; `render-start.sh` runs migrations + gunicorn
+- Blueprint: `render.yaml` defines web service + postgres db
+- CORS: Update `render.yaml` → `BACKEND_CORS_ORIGINS` for new frontend URLs
+- Flutter web build: `cd apps/web_app && flutter build web --dart-define=API_BASE_URL=https://breadboard-backend.onrender.com --release`
+- Vercel: Deploy `build/web` folder; or use `vercel.json` in repo
+- Render deploy: push to main → auto-deploy; or Manual Deploy from dashboard
 
 ## Content Sourcing Rules
 - Priority source order: Wikipedia → Electronics Tutorials → Arduino Docs → Raspberry Pi Docs → SparkFun → Adafruit → Open Source Circuits

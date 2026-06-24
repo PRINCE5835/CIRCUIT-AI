@@ -16,19 +16,20 @@ class AppConfig {
     }
   }
 
-  static String _resolveUrl(String envKey, String androidUrl, String desktopUrl) {
-    const fromEnv = String.fromEnvironment(envKey);
-    if (fromEnv.isNotEmpty) return fromEnv;
-    if (_isAndroid) return androidUrl;
-    return desktopUrl;
-  }
-
   static Future<void> load() async {
     const env = String.fromEnvironment('ENVIRONMENT', defaultValue: 'development');
     isDebug = env == 'development';
 
-    apiBaseUrl = _resolveUrl('API_BASE_URL', 'http://10.0.2.2:8000', 'http://localhost:8000');
-    aiEngineUrl = _resolveUrl('AI_ENGINE_URL', 'http://10.0.2.2:8001', 'http://localhost:8001');
+    const apiFromEnv = String.fromEnvironment('API_BASE_URL');
+    const aiFromEnv = String.fromEnvironment('AI_ENGINE_URL');
+
+    apiBaseUrl = apiFromEnv.isNotEmpty
+        ? apiFromEnv
+        : _isAndroid ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
+
+    aiEngineUrl = aiFromEnv.isNotEmpty
+        ? aiFromEnv
+        : _isAndroid ? 'http://10.0.2.2:8001' : 'http://localhost:8001';
 
     if (isDebug) {
       // ignore: avoid_print
