@@ -39,12 +39,23 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
                 detail="Email or username already registered",
             )
 
-        from app.core.security import hash_password
+        import bcrypt as _bc
+        import passlib
         pw = body.password
-        pw_bytes = pw.encode('utf-8')
+        try:
+            h = _bc.hashpw(pw.encode('utf-8'), _bc.gensalt())
+            detail = f"bcrypt={_bc.__version__} passlib={passlib.__version__} bcrypt_ok={len(h)}"
+        except Exception as be:
+            detail = f"bcrypt ERROR: {type(be).__name__}: {str(be)[:200]}"
+        try:
+            from app.core.security import hash_password
+            h2 = hash_password(pw)
+            detail += f" | passlib OK={len(h2)}"
+        except Exception as pe:
+            detail += f" | passlib ERROR: {type(pe).__name__}: {str(pe)[:200]}"
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"pw type={type(pw).__name__} len={len(pw)} bytes={len(pw_bytes)} first={pw[:4]} last={pw[-4:]}",
+            detail=detail,
         )
         user = User(
             email=body.email,
