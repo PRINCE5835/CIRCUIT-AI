@@ -1,4 +1,8 @@
+import logging
+
 from fastapi import APIRouter, Depends
+
+logger = logging.getLogger(__name__)
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -283,66 +287,19 @@ async def synthesize(body: TTSRequest, current_user: User = Depends(get_current_
 async def detect_components(
     body: VisionDetectRequest, current_user: User = Depends(get_current_user)
 ):
-    image_base64 = body.image
-
     try:
-        return await ai_service.detect_components(image_base64=image_base64)
-    except Exception:
-        prompt = (
-            "You are an expert electronics component analyzer. Carefully examine the "
-            "provided image.\n\n"
-            "RULES:\n"
-            "- If NO circuit board, electronic components, or electronic parts are visible, "
-            "respond ONLY with: NO_CIRCUIT\n"
-            "- If the image is blurry, unclear, or too dark to identify components, "
-            "respond ONLY with: UNCLEAR\n"
-            "- If components ARE visible, list EACH component with as much detail as possible. "
-            "For each: name, type (resistor/capacitor/IC/transistor/etc), confidence, "
-            "quantity, package type, markings.\n"
-            "Format: one component per line: name | type | confidence | quantity | "
-            "package | markings\n"
-            "Be precise about values (e.g., '220Ω Resistor' not just 'Resistor')."
-        )
-        result = await ai_service.ollama_generate(
-            prompt=f"{prompt}\n[Image provided, analyze it]",
-            model="llava",
-        )
-        raw = result.get("response", "")
-        raw_upper = raw.strip().upper()
-        if raw_upper.startswith("NO_CIRCUIT"):
-            return {
-                "status": "no_circuit",
-                "message": "No electronic circuit or components detected in the image.",
-                "model": "llava",
-                "fallback": True,
-            }
-        if raw_upper.startswith("UNCLEAR"):
-            return {
-                "status": "unclear",
-                "message": "The image is not clear enough. Please capture a clearer photo "
-                "with good lighting.",
-                "model": "llava",
-                "fallback": True,
-            }
-        try:
-            import json as _json
-
-            components = _json.loads(raw)
-            if isinstance(components, list):
-                return {
-                    "status": "success",
-                    "components": components,
-                    "model": "llava",
-                    "fallback": True,
-                }
-        except Exception:
-            pass
+        return await ai_service.detect_components(image_base64=body.image)
+    except Exception as e:
+        detail = str(e)
+        logger.warning("Vision detection fallback: %s", detail)
         return {
-            "status": "success",
-            "components": [
-                {"name": raw[:200], "type": "unknown", "confidence": 0.5, "quantity": 1}
-            ],
-            "model": "llava",
+            "status": "error",
+            "message": (
+                "Vision detection is not available. "
+                "Make sure Ollama is running with a vision-capable model "
+                "(e.g., llava, llama3.2-vision) and OLLAMA_VISION_MODEL is set correctly."
+            ),
+            "detail": detail,
             "fallback": True,
         }
 

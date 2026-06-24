@@ -357,9 +357,10 @@ async def detect_components(body: dict):
             "{\"status\": \"unclear\", \"message\": \"...\"}"
         )
 
-        # Send image to LLaVA via Ollama's /api/generate with images array
+        # Send image to vision model via Ollama's /api/generate with images array
+        model_name = settings.ollama_vision_model
         payload = {
-            "model": "llava",
+            "model": model_name,
             "prompt": prompt,
             "images": [image_b64],
             "options": {
@@ -369,9 +370,24 @@ async def detect_components(body: dict):
             "stream": False,
         }
         async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post("http://localhost:11434/api/generate", json=payload)
-            resp.raise_for_status()
+            resp = await client.post(f"{settings.ollama_host}/api/generate", json=payload)
             data = resp.json()
+
+            if resp.status_code == 400:
+                err = data.get("error", "")
+                if "does not support image" in err:
+                    return {
+                        "status": "error",
+                        "message": (
+                            f"The model '{model_name}' does not support image input. "
+                            "Please pull a vision-capable model (e.g., llava, llama3.2-vision) "
+                            "and update OLLAMA_VISION_MODEL in your .env."
+                        ),
+                        "model": model_name,
+                    }
+                raise HTTPException(status_code=400, detail=err)
+
+            resp.raise_for_status()
             raw = data.get("response", "")
 
         raw = raw.replace("```json", "").replace("```", "").strip()
@@ -379,15 +395,15 @@ async def detect_components(body: dict):
 
         status = result.get("status", "success")
         if status == "no_circuit":
-            return {"status": "no_circuit", "message": result.get("message", "No electronic circuit or components detected."), "model": "llava"}
+            return {"status": "no_circuit", "message": result.get("message", "No electronic circuit or components detected."), "model": model_name}
         if status == "unclear":
-            return {"status": "unclear", "message": result.get("message", "Image is not clear enough."), "model": "llava"}
+            return {"status": "unclear", "message": result.get("message", "Image is not clear enough."), "model": model_name}
 
         components = result.get("components", [])
         if isinstance(components, list) and components:
-            return {"status": "success", "components": components, "model": "llava"}
+            return {"status": "success", "components": components, "model": model_name}
         else:
-            return {"status": "no_circuit", "message": "No electronic components could be identified in the image.", "model": "llava"}
+            return {"status": "no_circuit", "message": "No electronic components could be identified in the image.", "model": model_name}
 
     except Exception as e:
         logger.error("Vision detection error: %s", str(e))

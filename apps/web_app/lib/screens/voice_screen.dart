@@ -183,7 +183,7 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen> {
         .map((m) => {'role': m.isUser ? 'user' : 'assistant', 'content': m.text})
         .toList();
 
-    final payload = <String, dynamic>{'messages': chatMessages, 'model': 'llava'};
+      final payload = <String, dynamic>{'messages': chatMessages};
     if (_conversationId != null) {
       payload['conversation_id'] = _conversationId;
     }
@@ -237,7 +237,7 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen> {
 
   Future<void> _streamingFallback(String text, List chatMessages) async {
     try {
-      final payload = <String, dynamic>{'messages': chatMessages, 'model': 'llava'};
+    final payload = <String, dynamic>{'messages': chatMessages};
       if (_conversationId != null) payload['conversation_id'] = _conversationId;
 
       final response = await ApiClient.instance.dio.post(

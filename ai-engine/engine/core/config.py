@@ -18,8 +18,10 @@ class Settings(BaseSettings):
     ollama_host: str = "http://localhost:11434"
     ollama_request_timeout: int = 120
 
-    # Primary model for circuit generation & reasoning
-    ollama_primary_model: str = "llava"
+    # Primary model for circuit generation & reasoning (text-only)
+    ollama_primary_model: str = "llama3.2:3b"
+    # Vision model (must support image input — e.g., llava, llama3.2-vision)
+    ollama_vision_model: str = "llava"
     # Coding-specific model
     ollama_coder_model: str = "deepseek-coder:1.3b"
     # Lightweight model for simple tasks
