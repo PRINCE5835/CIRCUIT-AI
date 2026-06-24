@@ -1,4 +1,13 @@
 import asyncio
+import sys
+from pathlib import Path
+
+# Ensure backend/ is on sys.path so "import app" works
+# (Render doesn't set PYTHONPATH during Blueprint deployed builds)
+_src_dir = Path(__file__).resolve().parents[3]  # → backend/
+if str(_src_dir) not in sys.path:
+    sys.path.insert(0, str(_src_dir))
+
 from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
