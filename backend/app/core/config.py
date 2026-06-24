@@ -48,6 +48,15 @@ class Settings(BaseSettings):
         "env_file_encoding": "utf-8",
     }
 
+    @field_validator("database_url")
+    @classmethod
+    def fix_async_driver(cls, v: str) -> str:
+        if v.startswith("postgresql://") and "+asyncpg" not in v:
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        if v.startswith("mysql://") and "+aiomysql" not in v:
+            return v.replace("mysql://", "mysql+aiomysql://", 1)
+        return v
+
     @field_validator("backend_secret_key", "jwt_secret_key")
     @classmethod
     def validate_secrets(cls, v: str) -> str:
