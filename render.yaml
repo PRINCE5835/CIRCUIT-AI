@@ -2,7 +2,7 @@ services:
   - type: web
     name: breadboard-backend
     runtime: python
-    repo: https://github.com/your-org/breadboard-ai
+    repo: https://github.com/PRINCE5835/CIRCUIT-AI
     plan: free
     region: oregon
     buildCommand: chmod +x render-build.sh && ./render-build.sh
@@ -24,7 +24,7 @@ services:
           name: breadboard-db
           property: connectionString
       - key: BACKEND_CORS_ORIGINS
-        value: https://your-frontend-domain.com
+        value: "*"
       - key: OLLAMA_HOST
         value: http://localhost:11434
       - key: LOG_LEVEL
