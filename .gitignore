@@ -59,6 +59,9 @@ logs/
 # GitHub Actions (PAT lacks workflow scope)
 .github/workflows/
 
+# GitHub Actions (PAT lacks workflow scope)
+.github/workflows/
+
 # Coverage
 coverage/
 htmlcov/
