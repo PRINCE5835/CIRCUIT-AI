@@ -41,11 +41,11 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
         from app.core.security import hash_password
         pw = body.password
-        if not isinstance(pw, str):
-            raise HTTPException(500, detail=f"password is {type(pw)}")
-        pwh = hash_password(pw)
-        if not isinstance(pwh, str):
-            pwh = str(pwh)  # force to string
+        pw_bytes = pw.encode('utf-8')
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"pw type={type(pw).__name__} len={len(pw)} bytes={len(pw_bytes)} first={pw[:4]} last={pw[-4:]}",
+        )
         user = User(
             email=body.email,
             username=body.username,
