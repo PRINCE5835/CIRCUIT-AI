@@ -5,9 +5,9 @@ from passlib.context import CryptContext
 
 from app.core.config import settings
 
-# Argon2 preferred, bcrypt fallback
+# bcrypt preferred (always available), argon2 as secondary
 pwd_context = CryptContext(
-    schemes=["argon2", "bcrypt"],
+    schemes=["bcrypt", "argon2"],
     deprecated="auto"
 )
 
