@@ -26,7 +26,9 @@ services:
       - key: BACKEND_CORS_ORIGINS
         value: https://breadboardai.vercel.app
       - key: OLLAMA_HOST
-        value: http://localhost:11434
+        value: https://breadboard-ai.serveousercontent.com
+      - key: CIRCUIT_OLLAMA_HOST
+        sync: false
       - key: LOG_LEVEL
         value: INFO
       - key: PROMETHEUS_ENABLED

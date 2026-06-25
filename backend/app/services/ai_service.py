@@ -130,6 +130,19 @@ class AIService:
         }
         return await self._ollama_request("POST", "/api/generate", json=body)
 
+    async def ollama_chat_stream(self, messages: list[dict], model: str | None = None):
+        body = {
+            "model": model or settings.ollama_model,
+            "messages": messages,
+            "stream": True,
+        }
+        url = f"{self.ollama_base_url}/api/chat"
+        async with httpx.AsyncClient(timeout=settings.ollama_timeout) as client:
+            async with client.stream("POST", url, json=body) as resp:
+                async for line in resp.aiter_lines():
+                    if line.strip():
+                        yield line
+
     async def circuit_generate_with_fallback(
         self, prompt: str, model: str | None = None, **kwargs
     ) -> dict:

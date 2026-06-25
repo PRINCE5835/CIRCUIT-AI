@@ -127,18 +127,18 @@ async def chat_stream(body: ChatStreamRequest, current_user: User = Depends(get_
         import httpx as _httpx
         import json as _json
 
-        ai_url = f"http://{settings.ai_engine_host}:{settings.ai_engine_port}/api/v1/chat"
-        payload = {
-            "messages": messages,
-            "model": model or settings.ollama_model,
-            "stream": True,
-            "max_tokens": 2048,
-        }
         collected = ""
-        final_content = ""
         meta_info = {}
+        final_content = ""
         try:
             async with _httpx.AsyncClient(timeout=120.0) as client:
+                ai_url = f"http://{settings.ai_engine_host}:{settings.ai_engine_port}/api/v1/chat"
+                payload = {
+                    "messages": messages,
+                    "model": model or settings.ollama_model,
+                    "stream": True,
+                    "max_tokens": 2048,
+                }
                 async with client.stream("POST", ai_url, json=payload) as resp:
                     async for line in resp.aiter_lines():
                         if line.startswith("data: "):
@@ -157,15 +157,25 @@ async def chat_stream(body: ChatStreamRequest, current_user: User = Depends(get_
                                 elif t == "done":
                                     final_content = data.get("content", collected)
                                 elif t == "error":
-                                    err = _json.dumps(
-                                        {"type": "error", "detail": data.get("detail", "")}
-                                    )
+                                    err = _json.dumps({"type": "error", "detail": data.get("detail", "")})
                                     yield f"data: {err}\n\n"
                             except _json.JSONDecodeError:
                                 pass
-        except Exception as e:
-            err = _json.dumps({"type": "error", "detail": str(e)})
-            yield f"data: {err}\n\n"
+        except Exception:
+            system = "You are BreadBoard AI, an expert electronics engineering assistant."
+            full_messages = [{"role": "system", "content": system}] + messages
+            async for line in ai_service.ollama_chat_stream(messages=full_messages, model=model):
+                if line.strip():
+                    try:
+                        data = _json.loads(line)
+                        content = data.get("message", {}).get("content", "")
+                        if content:
+                            collected += content
+                            yield f"data: {_json.dumps({'type': 'token', 'token': content})}\n\n"
+                        if data.get("done"):
+                            final_content = collected
+                    except _json.JSONDecodeError:
+                        pass
 
         result_content = final_content or collected
         done_data = {
