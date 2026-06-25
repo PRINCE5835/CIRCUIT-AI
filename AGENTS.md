@@ -51,22 +51,46 @@
 - Vercel deploy (prebuilt): `New-Item -ItemType Directory -Path .vercel/output/static -Force | Out-Null && Copy-Item build/web/* .vercel/output/static -Recurse -Force && vercel deploy --prebuilt --prod --token <TOKEN> --scope princenareshgamot-8750s-projects`
 - Render deploy: push to main → auto-deploy; or API: `POST /v1/services/{serviceId}/deploys`
 
-## Ollama Tunnel (serveo.net)
+## Ollama Tunnels (Dual Tunnel Architecture)
+
+### serveo.net (Primary — Chat, Generate, Health)
 - Local Ollama runs at `http://localhost:11434` with models: `llava:latest` (7B, vision), `qwen2.5:1.5b`
-- Node.js proxy (`node_proxy.js`) on port 19994 forwards HTTP `/api/*` to Ollama (`/api/generate`, `/api/chat`, `/api/tags`, etc.)
+- Node.js proxy (`node_proxy.js`) on port 19994 forwards HTTP `/api/*` to Ollama
 - STABLE subdomain: `https://breadboard-ai.serveousercontent.com` → port 19994 → Ollama 11434 (SSH key registered)
 - SSH command: `ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -R breadboard-ai:80:127.0.0.1:19994 serveo.net`
 - Do NOT use `-N` flag (causes 502 Bad Gateway); do NOT use `-tt` flag
 - `tunnel.vbs` starts the tunnel invisibly (hidden window, no `-N` flag)
 - `start_tunnel.bat` starts proxy + tunnel in visible window (one-click)
-- To start: run `start_tunnel.bat` from project root (starts proxy on 19994, then SSH tunnel)
+- To start: run `start_tunnel.bat` from project root
 - SSH key registered at https://console.serveo.net/ssh/keys:
   - `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEMdjQk/o0/mizAClNHY7OI5O/HoW9wGu6Yx86PBCYBS`
   - SHA256: `35rDBJV/U9MNawIqhRn6tFtC05TSPlKfQ13tmo6T9A4`
-- Render OLLAMA_HOST: `https://breadboard-ai.serveousercontent.com` (already set, no longer changes)
-- Trigger Render deploy after tunnel changes: `POST /v1/services/{serviceId}/deploys`
+- **Known limitation**: serveo filters responses containing electronics/circuit instruction content (returns 502). Used only for `/v1/ai/chat` and `/v1/ai/generate` (general Q&A).
+
+### Cloudflare Tunnel (Fallback — Circuit Generation Only)
+- Cloudflare Tunnel has NO content filtering — handles all circuit/electronics content
+- Binary at `D:\PROJECTS\BreadBoard-AI\BreadBoard-AI\cloudflared.exe`
+- Quick tunnel (ephemeral, URL changes each restart): `cloudflared tunnel --url http://localhost:19994`
+- `cloudflare_tunnel.vbs` starts it invisibly; `start_cloudflare.bat` starts it visibly
+- **Workflow to update**: start tunnel → get URL → set `CIRCUIT_OLLAMA_HOST` on Render → trigger deploy
+- Render expects `CIRCUIT_OLLAMA_HOST` env var pointing to the current Cloudflare tunnel URL
+
+### Dual-Tunnel Flow
+```
+User → Render Backend → POST /v1/ai/circuit/generate
+  1. Try AI Engine (port 8001) → fails (not deployed)
+  2. Try Ollama via serveo (OLLAMA_HOST) → blocked by filter → 502
+  3. Try Ollama via Cloudflare (CIRCUIT_OLLAMA_HOST) → succeeds
+```
+- Fallback implemented in `AIService.circuit_generate_with_fallback()` at `backend/app/services/ai_service.py:133`
+- Config: `backend/app/core/config.py:23` — `circuit_ollama_host` (env var `CIRCUIT_OLLAMA_HOST`)
+
+### Env Vars (set via Render API)
+- `OLLAMA_HOST` = `https://breadboard-ai.serveousercontent.com` (serveo, no change needed)
+- `CIRCUIT_OLLAMA_HOST` = `https://<tunnel-id>.trycloudflare.com` (cloudflare, updates when tunnel restarts)
 - Render API key: `$(RENDER_API_KEY)`
 - Render Service ID: `srv-d8tmgsn7f7vs73fa74q0`
+- Trigger Render deploy: `POST /v1/services/{serviceId}/deploys`
 - Tunnel health check: GET `https://breadboard-ai.serveousercontent.com/api/tags` → JSON model list
 - AI health check via backend: GET `https://breadboard-backend.onrender.com/v1/ai/health`
 
