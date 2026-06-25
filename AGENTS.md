@@ -94,8 +94,23 @@ User → Render Backend → POST /v1/ai/circuit/generate
 - Tunnel health check: GET `https://breadboard-ai.serveousercontent.com/api/tags` → JSON model list
 - AI health check via backend: GET `https://breadboard-backend.onrender.com/v1/ai/health`
 
+## Uptime Monitor
+- Script: `uptime_monitor.ps1` (pings backend, AI health, frontend every 5 min)
+- Auto-starts via VBS in Startup folder: `UptimeMonitor.vbs`
+- Desktop shortcut: `StartUptimeMonitor.vbs`
+- Logs to `$env:TEMP\uptime_monitor.log`
+- Prevents Render free-tier spin-down (15 min inactivity timeout)
+- For 24/7 coverage, sign up at https://uptimerobot.com (free, 5 monitors)
+
 ## Flutter APK Build
-- APK built successfully at `apps/mobile_app/build/app/outputs/flutter-apk/app-release.apk` (52.9MB)
+- Universal APK: `app-release.apk` (49.4MB, optimized with `--obfuscate --split-debug-info`)
+- Per-ABI APKs (preferred for smaller size):
+  - `app-arm64-v8a-release.apk` (17.5MB) — most modern devices
+  - `app-armeabi-v7a-release.apk` (14.9MB) — older devices
+  - `app-x86_64-release.apk` (18.9MB) — emulators/Chromebooks
+- Build commands:
+  - `flutter build apk --release --split-debug-info=build/debug-info --obfuscate` (universal)
+  - `flutter build apk --release --split-per-abi --split-debug-info=build/debug-info --obfuscate` (per-ABI)
 - Fixes applied for Flutter 3.44.1 compatibility:
   - `pubspec.yaml`: `audioplayers: ^5.2.1` → `^6.8.0` (compileSdk 33→34)
   - `android/gradle.properties`: added `kotlin.incremental=false` (cross-drive Kotlin cache bug C: vs D:)
