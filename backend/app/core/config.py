@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     ai_engine_host: str = "127.0.0.1"
     ai_engine_port: int = 8001
     ollama_host: str = "http://localhost:11434"
+    circuit_ollama_host: str = ""
     ollama_model: str = "llama3.2:3b"
     ollama_vision_model: str = "llava"
     ollama_timeout: int = 120

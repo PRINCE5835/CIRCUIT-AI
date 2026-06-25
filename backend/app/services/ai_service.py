@@ -12,6 +12,8 @@ class AIService:
         self.ollama_base_url = settings.ollama_host
         self.ollama_client = httpx.AsyncClient(timeout=settings.ollama_timeout)
 
+        self.circuit_ollama_base_url = settings.circuit_ollama_host or settings.ollama_host
+
     async def _request(self, method: str, path: str, **kwargs):
         url = f"{self.base_url}{path}"
         try:
@@ -127,6 +129,28 @@ class AIService:
             **kwargs,
         }
         return await self._ollama_request("POST", "/api/generate", json=body)
+
+    async def circuit_generate_with_fallback(
+        self, prompt: str, model: str | None = None, **kwargs
+    ) -> dict:
+        if self.circuit_ollama_base_url == self.ollama_base_url:
+            return await self.ollama_generate(prompt=prompt, model=model, **kwargs)
+
+        try:
+            return await self.ollama_generate(prompt=prompt, model=model, **kwargs)
+        except HTTPException as e:
+            if e.status_code != 502 and e.status_code != 504:
+                raise
+            body = {
+                "model": model or settings.ollama_model,
+                "prompt": prompt,
+                "stream": False,
+                **kwargs,
+            }
+            url = f"{self.circuit_ollama_base_url}/api/generate"
+            response = await self.ollama_client.request("POST", url, json=body)
+            response.raise_for_status()
+            return response.json()
 
 
 ai_service = AIService()

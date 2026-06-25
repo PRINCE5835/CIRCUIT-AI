@@ -254,7 +254,7 @@ async def generate_circuit(
             f"What parts are needed for: {description}\n\n"
             "Describe each part and how they connect to work together."
         )
-        return await ai_service.ollama_generate(prompt=prompt)
+        return await ai_service.circuit_generate_with_fallback(prompt=prompt)
 
 
 @router.post("/speech/stt")
