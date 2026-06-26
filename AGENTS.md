@@ -10,6 +10,8 @@
 - `ai-engine/` — AI/ML Python microservice
 - `shared/` — Shared types, schemas, constants
 - `infrastructure/` — Docker, K8s, monitoring
+- `scripts/tunnel/` — Tunnel scripts (serveo + Cloudflare)
+- `scripts/monitor/` — Uptime monitoring scripts
 
 ## Commands
 - Lint Python: `cd backend && flake8 app tests` or `cd ai-engine && flake8 engine tests`
@@ -55,13 +57,13 @@
 
 ### serveo.net (Primary — Chat, Generate, Health)
 - Local Ollama runs at `http://localhost:11434` with models: `llava:latest` (7B, vision), `qwen2.5:1.5b`
-- Node.js proxy (`node_proxy.js`) on port 19994 forwards HTTP `/api/*` to Ollama
+- Node.js proxy (`scripts/tunnel/node_proxy.js`) on port 19994 forwards HTTP `/api/*` to Ollama
 - STABLE subdomain: `https://breadboard-ai.serveousercontent.com` → port 19994 → Ollama 11434 (SSH key registered)
 - SSH command: `ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -R breadboard-ai:80:127.0.0.1:19994 serveo.net`
 - Do NOT use `-N` flag (causes 502 Bad Gateway); do NOT use `-tt` flag
-- `tunnel.vbs` starts the tunnel invisibly (hidden window, no `-N` flag)
-- `start_tunnel.bat` starts proxy + tunnel in visible window (one-click)
-- To start: run `start_tunnel.bat` from project root
+- `scripts/tunnel/tunnel.vbs` starts the tunnel invisibly (hidden window, no `-N` flag)
+- `scripts/tunnel/start_tunnel.bat` starts proxy + tunnel in visible window (one-click)
+- To start: run `scripts\tunnel\start_tunnel.bat`
 - SSH key registered at https://console.serveo.net/ssh/keys:
   - `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEMdjQk/o0/mizAClNHY7OI5O/HoW9wGu6Yx86PBCYBS`
   - SHA256: `35rDBJV/U9MNawIqhRn6tFtC05TSPlKfQ13tmo6T9A4`
@@ -71,7 +73,8 @@
 - Cloudflare Tunnel has NO content filtering — handles all circuit/electronics content
 - Binary at `D:\PROJECTS\BreadBoard-AI\BreadBoard-AI\cloudflared.exe`
 - Quick tunnel (ephemeral, URL changes each restart): `cloudflared tunnel --url http://localhost:19994`
-- `cloudflare_tunnel.vbs` starts it invisibly; `start_cloudflare.bat` starts it visibly
+- `scripts/tunnel/cloudflare_tunnel.vbs` starts it invisibly; `scripts/tunnel/start_cloudflare.bat` starts it visibly
+- Auto-managed by `scripts/tunnel/cloudflare_manager.ps1` (auto-start via Startup folder)
 - **Workflow to update**: start tunnel → get URL → set `CIRCUIT_OLLAMA_HOST` on Render → trigger deploy
 - Render expects `CIRCUIT_OLLAMA_HOST` env var pointing to the current Cloudflare tunnel URL
 
@@ -95,7 +98,7 @@ User → Render Backend → POST /v1/ai/circuit/generate
 - AI health check via backend: GET `https://breadboard-backend.onrender.com/v1/ai/health`
 
 ## Uptime Monitor
-- Script: `uptime_monitor.ps1` (pings backend, AI health, frontend every 5 min)
+- Script: `scripts/monitor/uptime_monitor.ps1` (pings backend, AI health, frontend every 5 min)
 - Auto-starts via VBS in Startup folder: `UptimeMonitor.vbs`
 - Desktop shortcut: `StartUptimeMonitor.vbs`
 - Logs to `$env:TEMP\uptime_monitor.log`

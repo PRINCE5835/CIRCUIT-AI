@@ -56,6 +56,26 @@ infrastructure/docker/data/
 *.log
 logs/
 
+# Tunnel binary
+cloudflared.exe
+
+# Desktop shortcuts
+*.lnk
+
+# Old root-level scripts (moved to scripts/)
+/node_proxy.js
+/proxy_server.py
+/start_tunnel.bat
+/start_tunnel.ps1
+/tunnel.ps1
+/tunnel.vbs
+/tunnel_launcher.ps1
+/tunnel_up.ps1
+/cloudflare_tunnel.vbs
+/start_cloudflare.bat
+/cloudflare_manager.ps1
+/uptime_monitor.ps1
+
 # Coverage
 coverage/
 htmlcov/
