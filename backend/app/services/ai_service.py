@@ -10,7 +10,10 @@ class AIService:
         self.client = httpx.AsyncClient(timeout=60.0)
 
         self.ollama_base_url = settings.ollama_host
-        self.ollama_client = httpx.AsyncClient(timeout=settings.ollama_timeout)
+        self.ollama_headers = {}
+        if settings.ollama_api_key:
+            self.ollama_headers["X-API-Key"] = settings.ollama_api_key
+        self.ollama_client = httpx.AsyncClient(timeout=settings.ollama_timeout, headers=self.ollama_headers)
 
         self.circuit_ollama_base_url = settings.circuit_ollama_host or settings.ollama_host
 
@@ -137,7 +140,7 @@ class AIService:
             "stream": True,
         }
         url = f"{self.ollama_base_url}/api/chat"
-        async with httpx.AsyncClient(timeout=settings.ollama_timeout) as client:
+        async with httpx.AsyncClient(timeout=settings.ollama_timeout, headers=self.ollama_headers) as client:
             async with client.stream("POST", url, json=body) as resp:
                 async for line in resp.aiter_lines():
                     if line.strip():

@@ -29,8 +29,8 @@ dependencies:
     sdk: flutter
 
 
-  record: ^5.0.4
-  audioplayers: ^5.2.1
+  record: ^7.0.0
+  audioplayers: ^6.8.0
   image_picker: ^1.0.7
   flutter_svg: ^2.0.9
 
