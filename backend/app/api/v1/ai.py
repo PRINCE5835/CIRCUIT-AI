@@ -1,4 +1,5 @@
 import logging
+import re
 
 from fastapi import APIRouter, Depends
 
@@ -24,6 +25,23 @@ from app.schemas.ai import (
 )
 
 router = APIRouter()
+
+
+def _detect_language(text: str) -> str:
+    if not text:
+        return "en"
+    hindi_chars = len(re.findall(r'[\u0900-\u097F]', text))
+    bengali_chars = len(re.findall(r'[\u0980-\u09FF]', text))
+    if hindi_chars > 3 or bengali_chars > 3:
+        return "hi" if hindi_chars >= bengali_chars else "bn"
+    return "en"
+
+
+def _language_instruction(text: str) -> str:
+    lang = _detect_language(text)
+    if lang == "hi":
+        return "IMPORTANT: Respond in Hindi (हिंदी). Use the same language as the user's message."
+    return "IMPORTANT: Respond in the same language as the user's message."
 
 
 @router.get("/health")
@@ -71,9 +89,11 @@ async def chat(
         query_type = result.get("query_type", "general")
         matched_circuits = result.get("matched_circuits", [])
     except Exception:
-        prompt = "\n".join([f"{m.get('role', 'user')}: {m.get('content', '')}" for m in messages])
+        user_text = next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
+        lang_instr = _language_instruction(user_text)
+        lang_prompt = f"{lang_instr}\n\n" + "\n".join([f"{m.get('role', 'user')}: {m.get('content', '')}" for m in messages])
         result = await ai_service.ollama_generate(
-            prompt=prompt,
+            prompt=lang_prompt,
             model=model,
         )
         response = result.get("response", "")
@@ -162,7 +182,9 @@ async def chat_stream(body: ChatStreamRequest, current_user: User = Depends(get_
                             except _json.JSONDecodeError:
                                 pass
         except Exception:
-            system = "You are BreadBoard AI, an expert electronics engineering assistant."
+            user_text = next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
+            lang_instr = _language_instruction(user_text)
+            system = f"You are BreadBoard AI, an expert electronics engineering assistant. {lang_instr}"
             full_messages = [{"role": "system", "content": system}] + messages
             async for line in ai_service.ollama_chat_stream(messages=full_messages, model=model):
                 if line.strip():
@@ -260,7 +282,9 @@ async def generate_circuit(
             "sources": sources,
         }
     except Exception:
+        lang_instr = _language_instruction(description)
         prompt = (
+            f"{lang_instr}\n\n"
             f"What parts are needed for: {description}\n\n"
             "Describe each part and how they connect to work together."
         )

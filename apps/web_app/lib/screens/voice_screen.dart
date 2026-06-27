@@ -6,6 +6,7 @@ import 'package:breadboard_shared/breadboard_shared.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../widgets/conversation_list.dart';
 import '../services/sse_client.dart';
+import '../services/speech_service.dart';
 import '../widgets/circuit_visualizer.dart';
 
 final _conversationProvider = StateNotifierProvider<_ConvNotifier, AsyncValue<List<Map<String, dynamic>>>>((ref) {
@@ -61,11 +62,17 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen> {
   bool _isLoading = false;
   String _title = 'New Chat';
   bool _showHistory = false;
+  final _speechService = SpeechService();
 
   @override
   void initState() {
     super.initState();
     _conversationId = widget.initialConversationId;
+    _speechService.onResult = (text) {
+      _controller.text = text;
+      _sendMessage(text);
+    };
+    _speechService.onError = (_) {};
     WidgetsBinding.instance.addPostFrameCallback((_) => _init());
   }
 
@@ -502,8 +509,21 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen> {
           Container(
             decoration: BoxDecoration(gradient: DSGradients.secondaryGradient, shape: BoxShape.circle),
             child: IconButton(
-              icon: const Icon(Icons.mic, color: Colors.white),
-              onPressed: () {},
+              icon: Icon(_speechService.isListening ? Icons.mic_off : Icons.mic, color: Colors.white),
+              onPressed: () {
+                if (_speechService.isListening) {
+                  _speechService.stop();
+                } else {
+                  if (!_speechService.isSupported) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Speech recognition not supported in this browser. Use Chrome or Edge.')),
+                    );
+                    return;
+                  }
+                  _speechService.start();
+                }
+                setState(() {});
+              },
             ),
           ),
         ],
