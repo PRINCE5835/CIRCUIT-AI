@@ -311,23 +311,23 @@ async def generate_circuit(
         "Describe each part and how they connect to work together."
     )
 
-    for attempt in range(3):
+    for source, fn in [
+        ("engine", lambda: ai_service.generate_circuit(description=description)),
+        ("ollama", lambda: ai_service.circuit_generate_with_fallback(prompt=prompt)),
+        ("cloud", lambda: {"response": ai_service.cloud_generate(
+            prompt=prompt,
+            system="You are an expert electronics engineer. Describe the circuit components needed, how they connect, and include safety notes.",
+        )}),
+    ]:
         try:
-            if attempt == 0:
-                result = await ai_service.generate_circuit(description=description)
-                return {"response": result.get("response", ""), "sources": result.get("sources", [])}
-            elif attempt == 1:
-                return await ai_service.circuit_generate_with_fallback(prompt=prompt)
-            else:
-                response = await ai_service.cloud_generate(
-                    prompt=prompt,
-                    system="You are an expert electronics engineer. Describe the circuit components needed, how they connect, and include safety notes.",
-                )
-                return {"response": response, "sources": []}
+            result = await fn()
+            text = result.get("response") if isinstance(result, dict) else result
+            if text:
+                return {"response": text, "sources": result.get("sources", []) if isinstance(result, dict) else []}
         except Exception:
-            if attempt < 2:
-                continue
-            return {"response": "Sorry, circuit generation is temporarily unavailable. Please try again later.", "sources": [], "error": True}
+            continue
+
+    return {"response": "Circuit generation is temporarily unavailable.", "sources": []}
 
 
 @router.post("/speech/stt")
