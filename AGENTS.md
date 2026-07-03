@@ -38,19 +38,33 @@
 - NEVER commit `.github/workflows/` (PAT lacks workflow scope)
 
 ## Deployment (Render + Vercel)
-- Backend: https://breadboard-backend.onrender.com (health: `/health`, AI: `/v1/ai/health`)
-- Frontend (prod): https://webapp-six-eta-87.vercel.app (Flutter Web)
-- Frontend (old): https://breadboardai.vercel.app
-- Vercel token: `$(VERCEL_TOKEN)`
+- Backend: https://breadboard-backend.onrender.com (health: `/health`, AI: `/v1/ai/health`) — cloud_llm (Groq) healthy
+- Frontend (prod): https://webapp-one-lemon.vercel.app (Flutter Web)
+- Frontend (old): https://webapp-six-eta-87.vercel.app (deprecated)
+- Frontend (legacy): https://breadboardai.vercel.app
 - Vercel project scope: `princenareshgamot-8750s-projects`
+- Vercel project name: `webapp-one-lemon`
 - Database: PostgreSQL (Render free tier, 1GB, db name: `breadboard`)
 - Database URL (internal): `postgresql://breadboard:$(DB_PASSWORD)@dpg-d8tmg777f7vs73fa6blg-a/breadboard`
 - Build: `render-build.sh` installs deps; `render-start.sh` runs migrations + gunicorn
 - Blueprint: `render.yaml` defines web service + postgres db
-- CORS origins: `https://breadboardai.vercel.app,https://webapp-six-eta-87.vercel.app` (set via env var `BACKEND_CORS_ORIGINS`)
+- CORS origins: `https://breadboardai.vercel.app,https://webapp-one-lemon.vercel.app` (set via env var `BACKEND_CORS_ORIGINS`)
 - Render env-var API: `PUT /v1/services/{serviceId}/env-vars/{key}` (single, safe) vs `PUT /env-vars` (bulk, wipes DATABASE_URL)
+
+## Cloud AI (Groq)
+- All AI endpoints now fall back to Groq cloud when Ollama/AI Engine are unreachable
+- `cloud_llm: healthy` means Groq API key is working
+- Chat, generate, circuit generation, cost estimation, and vision detection all use Groq
+- Vision: tries YOLO (local) first → falls back to Groq `llama-3.2-11b-vision-preview`
+- No paid API keys needed beyond Groq (free tier)
+
+## Uptime Monitor
+- Script: `scripts/monitor/uptime_monitor.ps1` — pings 3 endpoints every 5 min
+- Auto-starts via `scripts/monitor/UptimeMonitor.vbs` in Windows Startup folder
+- Prevents Render free-tier spin-down (15 min inactivity timeout)
+- Logs to `$env:TEMP\uptime_monitor.log`
 - Flutter web build: `cd apps/web_app && flutter build web --dart-define=API_BASE_URL=https://breadboard-backend.onrender.com --release`
-- Vercel deploy (prebuilt): `New-Item -ItemType Directory -Path .vercel/output/static -Force | Out-Null && Copy-Item build/web/* .vercel/output/static -Recurse -Force && vercel deploy --prebuilt --prod --token <TOKEN> --scope princenareshgamot-8750s-projects`
+- Vercel deploy (prebuilt): `flutter build web --dart-define=API_BASE_URL=https://breadboard-backend.onrender.com --release && New-Item -ItemType Directory -Path .vercel/output/static -Force | Out-Null && Copy-Item apps/web_app/build/web/* .vercel/output/static -Recurse -Force && vercel deploy --prebuilt --prod --scope princenareshgamot-8750s-projects`
 - Render deploy: push to main → auto-deploy; or API: `POST /v1/services/{serviceId}/deploys`
 
 ## Ollama Tunnels (Dual Tunnel Architecture)
