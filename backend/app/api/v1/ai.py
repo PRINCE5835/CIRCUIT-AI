@@ -311,21 +311,26 @@ async def generate_circuit(
         "Describe each part and how they connect to work together."
     )
 
-    for source, fn in [
-        ("engine", lambda: ai_service.generate_circuit(description=description)),
-        ("ollama", lambda: ai_service.circuit_generate_with_fallback(prompt=prompt)),
-        ("cloud", lambda: {"response": ai_service.cloud_generate(
-            prompt=prompt,
-            system="You are an expert electronics engineer. Describe the circuit components needed, how they connect, and include safety notes.",
-        )}),
-    ]:
-        try:
-            result = await fn()
-            text = result.get("response") if isinstance(result, dict) else result
-            if text:
-                return {"response": text, "sources": result.get("sources", []) if isinstance(result, dict) else []}
-        except Exception:
-            continue
+    try:
+        result = await ai_service.generate_circuit(description=description)
+        if result.get("response"):
+            return {"response": result["response"], "sources": result.get("sources", [])}
+    except Exception:
+        pass
+
+    try:
+        result = await ai_service.circuit_generate_with_fallback(prompt=prompt)
+        if result.get("response"):
+            return result
+    except Exception:
+        pass
+
+    response = await ai_service.cloud_generate(
+        prompt=prompt,
+        system="You are an expert electronics engineer. Describe the circuit components needed, how they connect, and include safety notes.",
+    )
+    if response:
+        return {"response": response, "sources": []}
 
     return {"response": "Circuit generation is temporarily unavailable.", "sources": []}
 
