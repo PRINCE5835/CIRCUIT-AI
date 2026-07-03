@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     google_api_key: str = ""
     gemini_model: str = "gemini-2.0-flash-lite"
 
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
+
     whisper_model_size: str = "base"
     vosk_model_path: str = "./engine/models/vosk/"
 
