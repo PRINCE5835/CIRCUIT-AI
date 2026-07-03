@@ -48,13 +48,27 @@ def _language_instruction(text: str) -> str:
 async def ai_health():
     from app.services.cloud_llm import cloud_llm
 
+    result = {"ai_engine": "unreachable", "ollama": "unreachable", "cloud_llm": "unavailable"}
     try:
-        return await ai_service.health()
+        ai_health = await ai_service.health()
+        result["ai_engine"] = ai_health.get("status", "unknown")
     except Exception:
-        try:
-            return await ai_service.ollama_health()
-        except Exception:
-            return await cloud_llm.health()
+        pass
+    try:
+        ollama_health = await ai_service.ollama_health()
+        result["ollama"] = str(ollama_health.get("ollama", False))
+    except Exception:
+        pass
+    try:
+        cloud_health = await cloud_llm.health()
+        result["cloud_llm"] = cloud_health.get("status", "unavailable")
+        result["cloud_detail"] = cloud_health.get("detail", "")
+    except Exception:
+        pass
+    result["overall"] = "healthy" if any(
+        v == "healthy" or v == "True" for v in [result["ai_engine"], result["ollama"], result["cloud_llm"]]
+    ) else "unhealthy"
+    return result
 
 
 @router.get("/models")
