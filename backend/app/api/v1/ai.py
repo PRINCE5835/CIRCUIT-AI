@@ -312,27 +312,16 @@ async def generate_circuit(
     )
 
     try:
-        result = await ai_service.generate_circuit(description=description)
-        if result.get("response"):
-            return {"response": result["response"], "sources": result.get("sources", [])}
+        response = await cloud_llm.generate(
+            prompt=prompt,
+            system="You are an expert electronics engineer. Describe the circuit components needed, how they connect, and include safety notes.",
+        )
+        if response:
+            return {"response": response, "sources": []}
     except Exception:
         pass
 
-    try:
-        result = await ai_service.circuit_generate_with_fallback(prompt=prompt)
-        if result.get("response"):
-            return result
-    except Exception:
-        pass
-
-    response = await ai_service.cloud_generate(
-        prompt=prompt,
-        system="You are an expert electronics engineer. Describe the circuit components needed, how they connect, and include safety notes.",
-    )
-    if response:
-        return {"response": response, "sources": []}
-
-    return {"response": "Circuit generation is temporarily unavailable.", "sources": []}
+    return {"response": "Sorry, circuit generation is temporarily unavailable.", "sources": []}
 
 
 @router.post("/speech/stt")
