@@ -1,4 +1,12 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
+
+_ENGINE_DIR = Path(__file__).resolve().parent.parent.parent
+
+
+def _abs(path: str) -> str:
+    return str(_ENGINE_DIR / path)
 
 
 class Settings(BaseSettings):
@@ -29,24 +37,24 @@ class Settings(BaseSettings):
 
     # ── Speech-to-Text ──────────────────────────────────────
     whisper_model_size: str = "base"
-    whisper_model_path: str = "./engine/models/whisper/"
-    vosk_model_path: str = "./engine/models/vosk/"
+    whisper_model_path: str = _abs("engine/models/whisper/")
+    vosk_model_path: str = _abs("engine/models/vosk/")
     vosk_model_lang: str = "en"
     audio_sample_rate: int = 16000
     audio_channels: int = 1
 
     # ── Text-to-Speech (Piper) ─────────────────────────────
     piper_binary_path: str = "/usr/local/bin/piper"
-    piper_model_path: str = "./engine/models/piper/"
+    piper_model_path: str = _abs("engine/models/piper/")
     piper_default_voice: str = "en_US-lessac-medium"
     piper_output_sample_rate: int = 22050
 
     # ── Vision ──────────────────────────────────────────────
-    yolo_model_path: str = "./engine/models/yolo/"
+    yolo_model_path: str = _abs("engine/models/yolo/")
     yolo_model_name: str = "best.pt"
     yolo_confidence_threshold: float = 0.4
     yolo_iou_threshold: float = 0.45
-    ocr_model_path: str = "./engine/models/ocr/"
+    ocr_model_path: str = _abs("engine/models/ocr/")
 
     # ── CORS ────────────────────────────────────────────────
     backend_cors_origins: str = "http://localhost:8000,http://localhost:8080"
