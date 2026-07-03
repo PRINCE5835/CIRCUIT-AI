@@ -31,6 +31,7 @@ class Settings(BaseSettings):
 
     groq_api_key: str = ""
     groq_model: str = "llama-3.3-70b-versatile"
+    groq_vision_model: str = "llama-3.2-11b-vision-preview"
 
     whisper_model_size: str = "base"
     vosk_model_path: str = "./engine/models/vosk/"

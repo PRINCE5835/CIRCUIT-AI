@@ -72,6 +72,64 @@ class GroqProvider:
                             pass
         yield f"data: {json.dumps({'type': 'done', 'content': full_text})}\n\n"
 
+    async def vision_detect(self, image_base64: str) -> list[dict]:
+        if not self._available:
+            raise RuntimeError("Groq API key not configured")
+        body = {
+            "model": settings.groq_vision_model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": (
+                                "You are an expert electronics component detector. "
+                                "Analyze this image and return ONLY valid JSON (no markdown) "
+                                "with this exact structure:\n"
+                                '{"status": "success"|"no_circuit"|"unclear", '
+                                '"components": [\n'
+                                "  {\"name\": \"component name\", "
+                                '"type": "resistor|capacitor|ic|transistor|diode|led|connector|other", '
+                                '"confidence": 0.0-1.0, '
+                                '"quantity": 1, '
+                                '"package": "package type", '
+                                '"markings": "visible text"}\n"
+                                "]}\n"
+                                "If no electronics are visible, return "
+                                '{"status": "no_circuit", "components": []}. '
+                                "If the image is blurry or unclear, return "
+                                '{"status": "unclear", "components": []}. '
+                                "Be thorough - check for resistors, capacitors, ICs, "
+                                "transistors, diodes, LEDs, connectors, and other components."
+                            ),
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image_base64}"
+                            },
+                        },
+                    ],
+                }
+            ],
+            "temperature": 0.1,
+            "max_tokens": 1024,
+        }
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        url = f"{self.base_url}/chat/completions"
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(url, json=body, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+            content = data["choices"][0]["message"]["content"]
+            cleaned = content.strip()
+            if cleaned.startswith("```"):
+                lines = cleaned.split("\n")
+                cleaned = "\n".join(lines[1:-1]) if len(lines) > 2 else lines[-1]
+            result = json.loads(cleaned)
+            return result.get("components", [])
+
     async def health(self) -> dict:
         if not self._available:
             return {"status": "unhealthy", "groq": False, "detail": "GROQ_API_KEY not set"}
@@ -233,6 +291,14 @@ class CloudLLM:
                 return
             except Exception:
                 pass
+
+    async def vision_detect(self, image_base64: str) -> list[dict]:
+        if self.groq.is_available:
+            try:
+                return await self.groq.vision_detect(image_base64=image_base64)
+            except Exception:
+                pass
+        return []
 
     async def health(self) -> dict:
         if self.groq.is_available:

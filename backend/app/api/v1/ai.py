@@ -362,19 +362,22 @@ async def detect_components(
     body: VisionDetectRequest, current_user: User = Depends(get_current_user)
 ):
     try:
-        return await ai_service.detect_components(image_base64=body.image)
+        result = await ai_service.detect_components(image_base64=body.image)
+        return result
     except Exception as e:
-        detail = str(e)
-        logger.warning("Vision detection fallback: %s", detail)
+        logger.warning("AI Engine unreachable, trying cloud vision: %s", str(e))
+
+    try:
+        components = await cloud_llm.vision_detect(image_base64=body.image)
+        if components:
+            return {"status": "success", "components": components, "source": "cloud"}
+        return {"status": "no_circuit", "components": [], "source": "cloud"}
+    except Exception as e:
+        logger.error("Cloud vision also failed: %s", str(e))
         return {
             "status": "error",
-            "message": (
-                "Vision detection is not available. "
-                "Make sure Ollama is running with a vision-capable model "
-                "(e.g., llava, llama3.2-vision) and OLLAMA_VISION_MODEL is set correctly."
-            ),
-            "detail": detail,
-            "fallback": True,
+            "message": "Component detection unavailable. Start Ollama with a vision model or check cloud API settings.",
+            "detail": str(e),
         }
 
 
@@ -385,4 +388,16 @@ async def estimate_cost(body: CostEstimateRequest, current_user: User = Depends(
             components=body.components,
         )
     except Exception:
-        return {"message": "Cost estimation not configured yet"}
+        pass
+
+    prompt = (
+        "Estimate the total cost for the following electronic components. "
+        "Provide a breakdown with unit prices and total. "
+        f"Components: {json.dumps(body.components)}"
+    )
+    response = await ai_service.cloud_generate(
+        prompt=prompt,
+        system="You are a pricing expert for electronic components. "
+        "Provide realistic cost estimates in USD.",
+    )
+    return {"cost_estimate": response, "source": "cloud"}
