@@ -43,6 +43,9 @@ class Settings(BaseSettings):
 
     # ── Vision ──────────────────────────────────────────────
     yolo_model_path: str = "./engine/models/yolo/"
+    yolo_model_name: str = "best.pt"
+    yolo_confidence_threshold: float = 0.4
+    yolo_iou_threshold: float = 0.45
     ocr_model_path: str = "./engine/models/ocr/"
 
     # ── CORS ────────────────────────────────────────────────

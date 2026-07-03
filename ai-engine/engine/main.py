@@ -18,6 +18,7 @@ from .speech.stt.vosk_handler import handler as vosk_handler
 from .speech.stt.whisper_handler import handler as whisper_handler
 from .speech.tts import tts
 from .classifier import classify, QueryType
+from .vision.detector import detector as yolo_detector
 from .content import sources as content_sources
 
 logger = logging.getLogger(__name__)
@@ -330,6 +331,28 @@ async def detect_components(body: dict):
     if not image_b64:
         raise HTTPException(status_code=400, detail="Image data is required")
 
+    use_yolo = body.get("use_yolo", True)
+    confidence_threshold = body.get("confidence_threshold", settings.yolo_confidence_threshold)
+
+    # Phase 1: YOLO fast detection
+    if use_yolo and yolo_detector.is_available:
+        try:
+            image_bytes = base64.b64decode(image_b64)
+            yolo_components = await yolo_detector.detect(
+                image_bytes,
+                confidence_threshold=confidence_threshold,
+            )
+            if yolo_components:
+                return {
+                    "status": "success",
+                    "components": yolo_components,
+                    "detector": "yolo",
+                    "count": len(yolo_components),
+                }
+        except Exception as e:
+            logger.warning("YOLO detection failed, falling back to LLM: %s", e)
+
+    # Phase 2: LLM-based detection (fallback or detail extraction)
     try:
         import json as _json
 
@@ -357,16 +380,12 @@ async def detect_components(body: dict):
             "{\"status\": \"unclear\", \"message\": \"...\"}"
         )
 
-        # Send image to vision model via Ollama's /api/generate with images array
         model_name = settings.ollama_vision_model
         payload = {
             "model": model_name,
             "prompt": prompt,
             "images": [image_b64],
-            "options": {
-                "temperature": 0.1,
-                "num_predict": 4096,
-            },
+            "options": {"temperature": 0.1, "num_predict": 4096},
             "stream": False,
         }
         async with httpx.AsyncClient(timeout=120.0) as client:
@@ -395,20 +414,20 @@ async def detect_components(body: dict):
 
         status = result.get("status", "success")
         if status == "no_circuit":
-            return {"status": "no_circuit", "message": result.get("message", "No electronic circuit or components detected."), "model": model_name}
+            return {"status": "no_circuit", "message": result.get("message", "No electronic circuit or components detected."), "model": model_name, "detector": "llm"}
         if status == "unclear":
-            return {"status": "unclear", "message": result.get("message", "Image is not clear enough."), "model": model_name}
+            return {"status": "unclear", "message": result.get("message", "Image is not clear enough."), "model": model_name, "detector": "llm"}
 
         components = result.get("components", [])
         if isinstance(components, list) and components:
-            return {"status": "success", "components": components, "model": model_name}
+            return {"status": "success", "components": components, "model": model_name, "detector": "llm"}
         else:
-            return {"status": "no_circuit", "message": "No electronic components could be identified in the image.", "model": model_name}
+            return {"status": "no_circuit", "message": "No electronic components could be identified in the image.", "model": model_name, "detector": "llm"}
 
     except Exception as e:
         logger.error("Vision detection error: %s", str(e))
 
-    return {"status": "error", "message": "Vision detection failed. Please try again with a clearer image.", "components": []}
+    return {"status": "error", "message": "Vision detection failed. Please try again with a clearer image.", "components": [], "detector": "none"}
 
 
 @app.post("/api/v1/cost/estimate")

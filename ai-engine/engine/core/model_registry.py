@@ -26,6 +26,7 @@ class ModelProvider(str, Enum):
     WHISPER = "whisper"
     VOSK = "vosk"
     PIPER = "piper"
+    LOCAL = "local"
 
 
 @dataclass
@@ -146,10 +147,20 @@ MODEL_REGISTRY: dict[str, ModelInfo] = {
     "piper-en-low": ModelInfo(
         name="Piper English Low",
         provider=ModelProvider.PIPER,
-        capability=[ModelCapability.TEXT_TO_SPEECH],
+        capability=[ModelCapability.SPEECH_TO_TEXT],
         path=settings.piper_model_path + "en_US-lessac-low",
         size_mb=40,
         description="Lightweight English TTS",
+    ),
+
+    # ── YOLO Models ──────────────────────────────────────────
+    "yolo-circuit": ModelInfo(
+        name="YOLO Circuit Detector",
+        provider=ModelProvider.LOCAL,
+        capability=[ModelCapability.VISION],
+        path=f"{settings.yolo_model_path}{settings.yolo_model_name}",
+        size_mb=6,
+        description="Real-time circuit component detection with YOLOv8",
     ),
 }
 
