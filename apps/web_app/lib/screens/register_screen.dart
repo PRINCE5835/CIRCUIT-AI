@@ -28,14 +28,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     super.dispose();
   }
 
+  String _generateUsername(String email) {
+    final prefix = email.split('@').first.toLowerCase();
+    final cleaned = prefix.replaceAll(RegExp(r'[^a-z0-9_]'), '_');
+    return '${cleaned}_${DateTime.now().millisecondsSinceEpoch % 10000}';
+  }
+
   Future<void> _onRegister() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     try {
+      final email = _emailController.text.trim();
+      final displayName = _nameController.text.trim();
+      final username = _generateUsername(email);
       await ref.read(authProvider.notifier).register(
-            _emailController.text.trim(),
-            _nameController.text.trim(),
+            email,
+            username,
             _passwordController.text,
-            displayName: _nameController.text.trim(),
+            displayName: displayName,
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -77,8 +86,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   const SizedBox(height: DSDimensions.s24),
                   Text('Create Account', style: theme.textTheme.headlineMedium),
                   const SizedBox(height: DSDimensions.s32),
-                  TextField(
+                  TextFormField(
                     controller: _nameController,
+                    validator: Validators.required,
                     decoration: InputDecoration(
                       labelText: 'Full Name',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -86,8 +96,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                   ),
                   const SizedBox(height: DSDimensions.s16),
-                  TextField(
+                  TextFormField(
                     controller: _emailController,
+                    validator: Validators.email,
                     decoration: InputDecoration(
                       labelText: 'Email',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -96,8 +107,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     keyboardType: TextInputType.emailAddress,
                   ),
                   const SizedBox(height: DSDimensions.s16),
-                  TextField(
+                  TextFormField(
                     controller: _passwordController,
+                    validator: Validators.password,
                     decoration: InputDecoration(
                       labelText: 'Password',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -110,8 +122,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     obscureText: _obscurePassword,
                   ),
                   const SizedBox(height: DSDimensions.s16),
-                  TextField(
+                  TextFormField(
                     controller: _confirmPasswordController,
+                    validator: (v) => Validators.confirmPassword(v, _passwordController.text),
                     decoration: InputDecoration(
                       labelText: 'Confirm Password',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),

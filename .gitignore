@@ -84,3 +84,4 @@ cloudflared.exe
 coverage/
 htmlcov/
 .coverage
+.vercel

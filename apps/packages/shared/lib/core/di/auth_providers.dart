@@ -103,6 +103,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<void> forgotPassword(String email) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await ApiClient.instance.dio.post(
+        ApiEndpoints.forgotPassword,
+        data: {'email': email},
+      );
+      state = state.copyWith(isLoading: false);
+    } on DioException catch (e) {
+      final msg = e.response?.data?['detail'] ?? 'Failed to send reset email';
+      state = state.copyWith(isLoading: false, error: msg);
+      throw Exception(msg);
+    } catch (e) {
+      final msg = e.toString();
+      state = state.copyWith(isLoading: false, error: msg);
+      throw Exception(msg);
+    }
+  }
+
   Future<void> fetchProfile() async {
     try {
       final response = await ApiClient.instance.dio.get(ApiEndpoints.profile);

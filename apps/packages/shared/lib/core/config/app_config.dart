@@ -1,4 +1,4 @@
-import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AppConfig {
   AppConfig._();
@@ -7,14 +7,6 @@ class AppConfig {
   static String apiBaseUrl = '';
   static String aiEngineUrl = '';
   static bool isDebug = true;
-
-  static bool get _isAndroid {
-    try {
-      return Platform.isAndroid;
-    } catch (_) {
-      return false;
-    }
-  }
 
   static Future<void> load() async {
     const env = String.fromEnvironment('ENVIRONMENT', defaultValue: 'development');
@@ -25,11 +17,11 @@ class AppConfig {
 
     apiBaseUrl = apiFromEnv.isNotEmpty
         ? apiFromEnv
-        : _isAndroid ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
+        : 'http://localhost:8000';
 
     aiEngineUrl = aiFromEnv.isNotEmpty
         ? aiFromEnv
-        : _isAndroid ? 'http://10.0.2.2:8001' : 'http://localhost:8001';
+        : 'http://localhost:8001';
 
     if (isDebug) {
       // ignore: avoid_print

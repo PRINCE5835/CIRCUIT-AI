@@ -37,7 +37,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     navigatorKey: _rootNavigatorKey,
     initialLocation: RoutePaths.splash,
     redirect: (context, state) {
-      final auth = ProviderScope.containerOf(context).read(authProvider);
+      final auth = ref.read(authProvider);
       final isLoggedIn = auth.isAuthenticated;
       final location = state.matchedLocation;
       final isAuthRoute = location == RoutePaths.login ||

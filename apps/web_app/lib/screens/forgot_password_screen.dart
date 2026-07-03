@@ -12,6 +12,7 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _emailController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
   bool _sent = false;
 
   @override
@@ -20,8 +21,23 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  void _onSubmit() {
-    setState(() => _sent = true);
+  Future<void> _onSubmit() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your email address')),
+      );
+      return;
+    }
+    try {
+      await ref.read(authProvider.notifier).forgotPassword(email);
+      if (!mounted) return;
+      setState(() => _sent = true);
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    }
   }
 
   @override
@@ -53,17 +69,22 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   style: TextStyle(color: isDark ? DSColors.grey400 : DSColors.grey500),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 32),
-                if (!_sent) ...[
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    style: TextStyle(color: isDark ? DSColors.white : DSColors.grey900),
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
+                  const SizedBox(height: 32),
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      if (!_sent) ...[
+                        TextFormField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          validator: Validators.email,
+                          style: TextStyle(color: isDark ? DSColors.white : DSColors.grey900),
+                          decoration: InputDecoration(
+                            labelText: 'Email',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
                   const SizedBox(height: 24),
                   FilledButton.icon(
                     onPressed: _onSubmit,
@@ -93,6 +114,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     ),
                   ),
                 ],
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 16),
                 TextButton(
                   onPressed: () => context.go(RoutePaths.login),

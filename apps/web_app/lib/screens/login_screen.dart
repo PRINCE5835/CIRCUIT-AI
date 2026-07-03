@@ -69,8 +69,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: DSDimensions.s24),
                   Text('Welcome Back', style: theme.textTheme.headlineMedium),
                   const SizedBox(height: DSDimensions.s32),
-                  TextField(
+                  TextFormField(
                     controller: _emailController,
+                    validator: Validators.email,
                     decoration: InputDecoration(
                       labelText: 'Email',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -79,8 +80,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     keyboardType: TextInputType.emailAddress,
                   ),
                   const SizedBox(height: DSDimensions.s16),
-                  TextField(
+                  TextFormField(
                     controller: _passwordController,
+                    validator: Validators.password,
                     decoration: InputDecoration(
                       labelText: 'Password',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
