@@ -42,6 +42,10 @@ apps/*/.flutter-plugins-dependencies
 apps/*/pubspec.lock
 apps/*/coverage/
 
+# Test artifacts
+test_*.jpg
+test_*.png
+
 # Model weights (too large for git)
 ai-engine/engine/models/whisper/
 ai-engine/engine/models/vosk/

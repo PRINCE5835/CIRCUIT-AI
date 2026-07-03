@@ -1,5 +1,5 @@
 $BACKEND = "https://breadboard-backend.onrender.com"
-$FRONTEND = "https://webapp-six-eta-87.vercel.app"
+$FRONTEND = "https://webapp-one-lemon.vercel.app"
 $LOG = "$env:TEMP\uptime_monitor.log"
 $INTERVAL_SEC = 300
 
@@ -13,8 +13,8 @@ while ($true) {
     foreach ($url in @("$BACKEND/health", "$BACKEND/v1/ai/health", "$FRONTEND")) {
         $total++
         try {
-            $r = curl.exe -s -o /dev/null -w "%{http_code}" --max-time 15 $url 2>&1
-            if ($r -match "200|304") { $ok++ } else { Log "WARN: $url returned $r" }
+            $r = (Invoke-WebRequest -Uri $url -TimeoutSec 15 -UseBasicParsing -SkipCertificateCheck).StatusCode
+            if ($r -eq 200 -or $r -eq 304) { $ok++ } else { Log "WARN: $url returned $r" }
         } catch { Log "FAIL: $url - $_" }
     }
 
