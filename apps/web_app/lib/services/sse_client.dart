@@ -35,13 +35,13 @@ class SseClient {
 
     var lastIndex = 0;
 
-    _request!.onProgress.listen((_) {
+    void processChunk() {
       final responseText = _request!.responseText ?? '';
+      if (responseText.length <= lastIndex) return;
       final newData = responseText.substring(lastIndex);
       lastIndex = responseText.length;
 
-      final lines = newData.split('\n');
-      for (final line in lines) {
+      for (final line in newData.split('\n')) {
         if (line.startsWith('data: ')) {
           final raw = line.substring(6).trim();
           if (raw.isEmpty) continue;
@@ -72,14 +72,16 @@ class SseClient {
           } catch (_) {}
         }
       }
-    });
+    }
 
+    _request!.onProgress.listen((_) => processChunk());
+    _request!.onReadyStateChange.listen((_) {
+      if (_request!.readyState >= html.HttpRequest.LOADING) {
+        processChunk();
+      }
+    });
     _request!.onError.listen((_) {
       onError('Connection failed');
-    });
-
-    _request!.onLoadEnd.listen((_) {
-      // Connection closed
     });
   }
 

@@ -304,23 +304,32 @@ async def generate_circuit(
     body: CircuitGenerateRequest, current_user: User = Depends(get_current_user)
 ):
     description = body.description
+    lang_instr = _language_instruction(description)
+    prompt = (
+        f"{lang_instr}\n\n"
+        f"What parts are needed for: {description}\n\n"
+        "Describe each part and how they connect to work together."
+    )
 
     try:
         result = await ai_service.generate_circuit(description=description)
-        response = result.get("response", "")
-        sources = result.get("sources", [])
         return {
-            "response": response,
-            "sources": sources,
+            "response": result.get("response", ""),
+            "sources": result.get("sources", []),
         }
     except Exception:
-        lang_instr = _language_instruction(description)
-        prompt = (
-            f"{lang_instr}\n\n"
-            f"What parts are needed for: {description}\n\n"
-            "Describe each part and how they connect to work together."
-        )
+        pass
+
+    try:
         return await ai_service.circuit_generate_with_fallback(prompt=prompt)
+    except Exception:
+        pass
+
+    response = await ai_service.cloud_generate(
+        prompt=prompt,
+        system="You are an expert electronics engineer. Describe the circuit components needed, how they connect, and include safety notes.",
+    )
+    return {"response": response, "sources": []}
 
 
 @router.post("/speech/stt")
