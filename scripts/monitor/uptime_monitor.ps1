@@ -3,21 +3,31 @@ $FRONTEND = "https://webapp-one-lemon.vercel.app"
 $LOG = "$env:TEMP\uptime_monitor.log"
 $INTERVAL_SEC = 300
 
-function Log { param([string]$m) $t = Get-Date -Format "yyyy-MM-dd HH:mm:ss"; "$t $m" | Out-File $LOG -Append -Encoding utf8 }
+$ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+Add-Content -Path $LOG -Value "$ts === Uptime Monitor Started ==="
 
-Log "=== Uptime Monitor Started ==="
 while ($true) {
     $ok = 0; $total = 0
-    $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
     foreach ($url in @("$BACKEND/health", "$BACKEND/v1/ai/health", "$FRONTEND")) {
         $total++
+        $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         try {
-            $r = (Invoke-WebRequest -Uri $url -TimeoutSec 15 -UseBasicParsing -SkipCertificateCheck).StatusCode
-            if ($r -eq 200 -or $r -eq 304) { $ok++ } else { Log "WARN: $url returned $r" }
-        } catch { Log "FAIL: $url - $_" }
+            $r = (Invoke-WebRequest -Uri $url -TimeoutSec 15 -UseBasicParsing).StatusCode
+            if ($r -eq 200 -or $r -eq 304) {
+                $ok++
+            } else {
+                Add-Content -Path $LOG -Value "$ts WARN: $url returned $r"
+            }
+        } catch {
+            Add-Content -Path $LOG -Value "$ts FAIL: $url - $_"
+        }
     }
 
-    if ($ok -lt $total) { Log "Pinged $ok/$total endpoints OK (some degraded)" }
+    if ($ok -lt $total) {
+        Add-Content -Path $LOG -Value "$ts Pinged $ok/$total endpoints OK (some degraded)"
+    } else {
+        Add-Content -Path $LOG -Value "$ts All $total endpoints OK"
+    }
     Start-Sleep -Seconds $INTERVAL_SEC
 }
