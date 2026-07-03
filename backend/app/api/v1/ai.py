@@ -311,25 +311,23 @@ async def generate_circuit(
         "Describe each part and how they connect to work together."
     )
 
-    try:
-        result = await ai_service.generate_circuit(description=description)
-        return {
-            "response": result.get("response", ""),
-            "sources": result.get("sources", []),
-        }
-    except Exception:
-        pass
-
-    try:
-        return await ai_service.circuit_generate_with_fallback(prompt=prompt)
-    except Exception:
-        pass
-
-    response = await ai_service.cloud_generate(
-        prompt=prompt,
-        system="You are an expert electronics engineer. Describe the circuit components needed, how they connect, and include safety notes.",
-    )
-    return {"response": response, "sources": []}
+    for attempt in range(3):
+        try:
+            if attempt == 0:
+                result = await ai_service.generate_circuit(description=description)
+                return {"response": result.get("response", ""), "sources": result.get("sources", [])}
+            elif attempt == 1:
+                return await ai_service.circuit_generate_with_fallback(prompt=prompt)
+            else:
+                response = await ai_service.cloud_generate(
+                    prompt=prompt,
+                    system="You are an expert electronics engineer. Describe the circuit components needed, how they connect, and include safety notes.",
+                )
+                return {"response": response, "sources": []}
+        except Exception:
+            if attempt < 2:
+                continue
+            return {"response": "Sorry, circuit generation is temporarily unavailable. Please try again later.", "sources": [], "error": True}
 
 
 @router.post("/speech/stt")
@@ -384,20 +382,22 @@ async def detect_components(
 @router.post("/cost/estimate")
 async def estimate_cost(body: CostEstimateRequest, current_user: User = Depends(get_current_user)):
     try:
-        return await ai_service.estimate_cost(
-            components=body.components,
-        )
+        result = await ai_service.estimate_cost(components=body.components)
+        return result
     except Exception:
         pass
 
-    prompt = (
-        "Estimate the total cost for the following electronic components. "
-        "Provide a breakdown with unit prices and total. "
-        f"Components: {json.dumps(body.components)}"
-    )
-    response = await ai_service.cloud_generate(
-        prompt=prompt,
-        system="You are a pricing expert for electronic components. "
-        "Provide realistic cost estimates in USD.",
-    )
-    return {"cost_estimate": response, "source": "cloud"}
+    try:
+        prompt = (
+            "Estimate the total cost for the following electronic components. "
+            "Provide a breakdown with unit prices and total. "
+            f"Components: {json.dumps(body.components)}"
+        )
+        response = await ai_service.cloud_generate(
+            prompt=prompt,
+            system="You are a pricing expert for electronic components. "
+            "Provide realistic cost estimates in USD.",
+        )
+        return {"cost_estimate": response, "source": "cloud"}
+    except Exception:
+        return {"message": "Cost estimation not available right now."}
