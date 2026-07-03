@@ -85,23 +85,23 @@ class GroqProvider:
                             "type": "text",
                             "text": (
                                 "You are an expert electronics component detector. "
-                                "Analyze this image and return ONLY valid JSON (no markdown) "
-                                "with this exact structure:\n"
-                                '{"status": "success"|"no_circuit"|"unclear", '
-                                '"components": [\n'
-                                "  {\"name\": \"component name\", "
-                                '"type": "resistor|capacitor|ic|transistor|diode|led|connector|other", '
-                                '"confidence": 0.0-1.0, '
-                                '"quantity": 1, '
-                                '"package": "package type", '
-                                '"markings": "visible text"}\n"
-                                "]}\n"
-                                "If no electronics are visible, return "
-                                '{"status": "no_circuit", "components": []}. '
-                                "If the image is blurry or unclear, return "
-                                '{"status": "unclear", "components": []}. '
-                                "Be thorough - check for resistors, capacitors, ICs, "
-                                "transistors, diodes, LEDs, connectors, and other components."
+                                + "Analyze this image and return ONLY valid JSON (no markdown) "
+                                + "with this exact structure:\n"
+                                + '{"status": "success"|"no_circuit"|"unclear", '
+                                + '"components": [\n'
+                                + '  {"name": "component name", '
+                                + '"type": "resistor|capacitor|ic|transistor|diode|led|connector|other", '
+                                + '"confidence": 0.0-1.0, '
+                                + '"quantity": 1, '
+                                + '"package": "package type", '
+                                + '"markings": "visible text"}\n'
+                                + "]}\n"
+                                + "If no electronics are visible, return "
+                                + '{"status": "no_circuit", "components": []}. '
+                                + "If the image is blurry or unclear, return "
+                                + '{"status": "unclear", "components": []}. '
+                                + "Be thorough - check for resistors, capacitors, ICs, "
+                                + "transistors, diodes, LEDs, connectors, and other components."
                             ),
                         },
                         {

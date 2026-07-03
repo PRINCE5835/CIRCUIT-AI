@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+echo "Build starting..."
+
 cd backend
 
-# Install dependencies
 pip install -r requirements/prod.txt
+
+echo "Build complete."
