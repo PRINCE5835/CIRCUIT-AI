@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000
     backend_secret_key: str = ""
-    backend_cors_origins: str = "http://localhost:8080,http://localhost:5000"
+    backend_cors_origins: str = "http://localhost:8080,http://localhost:5000,http://localhost:3000,https://webapp-one-lemon.vercel.app,https://webapp-six-eta-87.vercel.app,https://breadboardai.vercel.app"
     backend_rate_limit: str = "100/minute"
 
     database_url: str = "postgresql+asyncpg://breadboard:breadboard@localhost:5432/breadboard"

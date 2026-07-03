@@ -24,7 +24,7 @@ services:
           name: breadboard-db
           property: connectionString
       - key: BACKEND_CORS_ORIGINS
-        value: https://breadboardai.vercel.app
+        value: https://breadboardai.vercel.app,https://webapp-one-lemon.vercel.app,https://webapp-six-eta-87.vercel.app
       - key: OLLAMA_HOST
         value: https://breadboard-ai.serveousercontent.com
       - key: CIRCUIT_OLLAMA_HOST
