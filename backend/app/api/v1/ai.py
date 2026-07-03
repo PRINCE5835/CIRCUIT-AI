@@ -46,10 +46,15 @@ def _language_instruction(text: str) -> str:
 
 @router.get("/health")
 async def ai_health():
+    from app.services.cloud_llm import cloud_llm
+
     try:
         return await ai_service.health()
     except Exception:
-        return await ai_service.ollama_health()
+        try:
+            return await ai_service.ollama_health()
+        except Exception:
+            return await cloud_llm.health()
 
 
 @router.get("/models")
@@ -91,12 +96,9 @@ async def chat(
     except Exception:
         user_text = next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
         lang_instr = _language_instruction(user_text)
-        lang_prompt = f"{lang_instr}\n\n" + "\n".join([f"{m.get('role', 'user')}: {m.get('content', '')}" for m in messages])
-        result = await ai_service.ollama_generate(
-            prompt=lang_prompt,
-            model=model,
-        )
-        response = result.get("response", "")
+        system = f"You are BreadBoard AI, an expert electronics engineering assistant. {lang_instr}"
+        lang_prompt = "\n".join([f"{m.get('role', 'user')}: {m.get('content', '')}" for m in messages])
+        response = await ai_service.cloud_generate(prompt=lang_prompt, system=system)
         sources = []
         query_type = "general"
         matched_circuits = []
@@ -185,17 +187,26 @@ async def chat_stream(body: ChatStreamRequest, current_user: User = Depends(get_
             user_text = next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
             lang_instr = _language_instruction(user_text)
             system = f"You are BreadBoard AI, an expert electronics engineering assistant. {lang_instr}"
-            full_messages = [{"role": "system", "content": system}] + messages
-            async for line in ai_service.ollama_chat_stream(messages=full_messages, model=model):
-                if line.strip():
+            async for chunk in ai_service.cloud_chat_stream(messages=messages, system=system):
+                if chunk.strip():
                     try:
-                        data = _json.loads(line)
-                        content = data.get("message", {}).get("content", "")
-                        if content:
-                            collected += content
-                            yield f"data: {_json.dumps({'type': 'token', 'token': content})}\n\n"
-                        if data.get("done"):
-                            final_content = collected
+                        raw = chunk[6:] if chunk.startswith("data: ") else chunk
+                        data = _json.loads(raw)
+                        t = data.get("type", "")
+                        if t == "token":
+                            token = data.get("token", "")
+                            if token:
+                                collected += token
+                                yield f"data: {_json.dumps({'type': 'token', 'token': token})}\n\n"
+                        elif t == "done":
+                            final_content = data.get("content", collected)
+                        elif "message" in data:
+                            content = data.get("message", {}).get("content", "")
+                            if content:
+                                collected += content
+                                yield f"data: {_json.dumps({'type': 'token', 'token': content})}\n\n"
+                            if data.get("done"):
+                                final_content = collected
                     except _json.JSONDecodeError:
                         pass
 
@@ -260,10 +271,10 @@ async def generate(body: GenerateRequest, current_user: User = Depends(get_curre
         result = await ai_service.generate(prompt=prompt, model=model)
         return {"response": result.get("response", ""), "model": model or settings.ollama_model}
     except Exception:
-        result = await ai_service.ollama_generate(prompt=prompt, model=model)
+        response = await ai_service.cloud_generate(prompt=prompt)
         return {
-            "response": result.get("response", ""),
-            "model": result.get("model", settings.ollama_model),
+            "response": response,
+            "model": settings.ollama_model,
         }
 
 

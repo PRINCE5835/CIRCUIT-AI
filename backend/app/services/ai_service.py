@@ -2,6 +2,7 @@ import httpx
 from fastapi import HTTPException, status
 
 from app.core.config import settings
+from app.services.cloud_llm import cloud_llm
 
 
 class AIService:
@@ -145,6 +146,30 @@ class AIService:
                 async for line in resp.aiter_lines():
                     if line.strip():
                         yield line
+
+    async def cloud_generate(self, prompt: str, system: str | None = None) -> str:
+        if cloud_llm.is_available:
+            try:
+                return await cloud_llm.generate(prompt=prompt, system=system)
+            except Exception:
+                pass
+        try:
+            result = await self.ollama_generate(prompt=prompt)
+            return result.get("response", "")
+        except Exception:
+            return "Sorry, I'm having trouble connecting. Please try again later."
+
+    async def cloud_chat_stream(self, messages: list[dict], system: str | None = None):
+        if cloud_llm.is_available:
+            try:
+                async for chunk in cloud_llm.chat_stream(messages=messages, system=system):
+                    yield chunk
+                return
+            except Exception:
+                pass
+        async for line in self.ollama_chat_stream(messages=messages):
+            if line.strip():
+                yield line
 
     async def circuit_generate_with_fallback(
         self, prompt: str, model: str | None = None, **kwargs
