@@ -275,13 +275,13 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final errMsg = e is DioException
+            ? '> **API Error** (${e.response?.statusCode ?? 'connection'}): ${e.response?.data?['detail'] ?? e.message}'
+            : '> **Error**: $e';
         setState(() {
           final idx = _messages.length - 1;
           if (idx >= 0) {
-            _messages[idx] = _ChatMessage(
-              '> **Error**: I encountered a problem. Please make sure the backend and AI engine are running on ports **8000** and **8001**.',
-              false,
-            );
+            _messages[idx] = _ChatMessage(errMsg, false);
           }
           _isLoading = false;
         });

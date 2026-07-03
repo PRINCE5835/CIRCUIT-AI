@@ -1,5 +1,4 @@
 import json
-from typing import AsyncGenerator
 
 import httpx
 
@@ -112,7 +111,7 @@ class GeminiProvider:
             raise RuntimeError("Google API key not configured")
         contents = self._build_contents(messages)
         url = f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}"
-        body = {"contents": contents}
+        body: dict = {"contents": contents}
         if system:
             body["systemInstruction"] = {"parts": [{"text": system}]}
         async with httpx.AsyncClient(timeout=120) as client:
@@ -123,7 +122,7 @@ class GeminiProvider:
 
     async def generate(self, prompt: str, system: str | None = None) -> str:
         url = f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}"
-        body = {"contents": [{"parts": [{"text": prompt}]}]}
+        body: dict = {"contents": [{"parts": [{"text": prompt}]}]}
         if system:
             body["systemInstruction"] = {"parts": [{"text": system}]}
         async with httpx.AsyncClient(timeout=60) as client:
@@ -136,8 +135,11 @@ class GeminiProvider:
         if not self._available:
             raise RuntimeError("Google API key not configured")
         contents = self._build_contents(messages)
-        url = f"{self.base_url}/models/{self.model}:streamGenerateContent?alt=sse&key={self.api_key}"
-        body = {"contents": contents}
+        url = (
+            f"{self.base_url}/models/{self.model}"
+            f":streamGenerateContent?alt=sse&key={self.api_key}"
+        )
+        body: dict = {"contents": contents}
         if system:
             body["systemInstruction"] = {"parts": [{"text": system}]}
         full_text = ""
@@ -158,7 +160,10 @@ class GeminiProvider:
                                     token = part.get("text", "")
                                     if token:
                                         full_text += token
-                                        yield f"data: {json.dumps({'type': 'token', 'token': token})}\n\n"
+                                        token_data = json.dumps(
+                                            {"type": "token", "token": token}
+                                        )
+                                        yield f"data: {token_data}\n\n"
                         except json.JSONDecodeError:
                             pass
         yield f"data: {json.dumps({'type': 'done', 'content': full_text})}\n\n"
@@ -234,7 +239,10 @@ class CloudLLM:
             return await self.groq.health()
         if self.gemini.is_available:
             return await self.gemini.health()
-        return {"status": "unhealthy", "detail": "No cloud LLM configured (set GROQ_API_KEY or GOOGLE_API_KEY)"}
+        return {
+            "status": "unhealthy",
+            "detail": "No cloud LLM configured (set GROQ_API_KEY or GOOGLE_API_KEY)",
+        }
 
 
 cloud_llm = CloudLLM()

@@ -1,28 +1,32 @@
+import json
 import logging
 import re
 
+import httpx
 from fastapi import APIRouter, Depends
-
-logger = logging.getLogger(__name__)
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.services.ai_service import ai_service
 from app.core.dependencies import get_db, get_current_user
-from app.models.user import User
-from app.models.conversation import Conversation
+from app.db.base import async_session_factory
 from app.db.repository import BaseRepository
+from app.models.conversation import Conversation
+from app.models.user import User
 from app.schemas.ai import (
     ChatRequest,
     ChatStreamRequest,
-    GenerateRequest,
+    CostEstimateRequest,
     CircuitGenerateRequest,
+    GenerateRequest,
     STTRequest,
     TTSRequest,
     VisionDetectRequest,
-    CostEstimateRequest,
 )
+from app.services.ai_service import ai_service
+from app.services.cloud_llm import cloud_llm
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -46,8 +50,6 @@ def _language_instruction(text: str) -> str:
 
 @router.get("/health")
 async def ai_health():
-    from app.services.cloud_llm import cloud_llm
-
     result = {"ai_engine": "unreachable", "ollama": "unreachable", "cloud_llm": "unavailable"}
     try:
         ai_health = await ai_service.health()
@@ -65,8 +67,9 @@ async def ai_health():
         result["cloud_detail"] = cloud_health.get("detail", "")
     except Exception:
         pass
+    statuses = [result["ai_engine"], result["ollama"], result["cloud_llm"]]
     result["overall"] = "healthy" if any(
-        v == "healthy" or v == "True" for v in [result["ai_engine"], result["ollama"], result["cloud_llm"]]
+        v == "healthy" or v == "True" for v in statuses
     ) else "unhealthy"
     return result
 
@@ -108,10 +111,13 @@ async def chat(
         query_type = result.get("query_type", "general")
         matched_circuits = result.get("matched_circuits", [])
     except Exception:
-        user_text = next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
+        user_text = next(
+            (m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), ""
+        )
         lang_instr = _language_instruction(user_text)
         system = f"You are BreadBoard AI, an expert electronics engineering assistant. {lang_instr}"
-        lang_prompt = "\n".join([f"{m.get('role', 'user')}: {m.get('content', '')}" for m in messages])
+        lines = [f"{m.get('role', 'user')}: {m.get('content', '')}" for m in messages]
+        lang_prompt = "\n".join(lines)
         response = await ai_service.cloud_generate(prompt=lang_prompt, system=system)
         sources = []
         query_type = "general"
@@ -160,15 +166,14 @@ async def chat_stream(body: ChatStreamRequest, current_user: User = Depends(get_
     conversation_id = body.conversation_id
 
     async def _proxy_stream():
-        import httpx as _httpx
-        import json as _json
-
         collected = ""
         meta_info = {}
         final_content = ""
         try:
-            async with _httpx.AsyncClient(timeout=120.0) as client:
-                ai_url = f"http://{settings.ai_engine_host}:{settings.ai_engine_port}/api/v1/chat"
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                ai_host = settings.ai_engine_host
+                ai_port = settings.ai_engine_port
+                ai_url = f"http://{ai_host}:{ai_port}/api/v1/chat"
                 payload = {
                     "messages": messages,
                     "model": model or settings.ollama_model,
@@ -180,7 +185,7 @@ async def chat_stream(body: ChatStreamRequest, current_user: User = Depends(get_
                         if line.startswith("data: "):
                             raw = line[6:]
                             try:
-                                data = _json.loads(raw)
+                                data = json.loads(raw)
                                 t = data.get("type", "")
                                 if t == "meta":
                                     meta_info = data
@@ -188,40 +193,46 @@ async def chat_stream(body: ChatStreamRequest, current_user: User = Depends(get_
                                     token = data.get("token", "")
                                     if token:
                                         collected += token
-                                        payload = _json.dumps({"type": "token", "token": token})
+                                        payload = json.dumps({"type": "token", "token": token})
                                         yield f"data: {payload}\n\n"
                                 elif t == "done":
                                     final_content = data.get("content", collected)
                                 elif t == "error":
-                                    err = _json.dumps({"type": "error", "detail": data.get("detail", "")})
+                                    err_detail = data.get("detail", "")
+                                    err = json.dumps({"type": "error", "detail": err_detail})
                                     yield f"data: {err}\n\n"
-                            except _json.JSONDecodeError:
+                            except json.JSONDecodeError:
                                 pass
         except Exception:
-            user_text = next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
+            user_text = next(
+                (m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), ""
+            )
             lang_instr = _language_instruction(user_text)
-            system = f"You are BreadBoard AI, an expert electronics engineering assistant. {lang_instr}"
+            system = (
+                f"You are BreadBoard AI, an expert electronics engineering assistant."
+                f" {lang_instr}"
+            )
             async for chunk in ai_service.cloud_chat_stream(messages=messages, system=system):
                 if chunk.strip():
                     try:
                         raw = chunk[6:] if chunk.startswith("data: ") else chunk
-                        data = _json.loads(raw)
+                        data = json.loads(raw)
                         t = data.get("type", "")
                         if t == "token":
                             token = data.get("token", "")
                             if token:
                                 collected += token
-                                yield f"data: {_json.dumps({'type': 'token', 'token': token})}\n\n"
+                                yield f"data: {json.dumps({'type': 'token', 'token': token})}\n\n"
                         elif t == "done":
                             final_content = data.get("content", collected)
                         elif "message" in data:
                             content = data.get("message", {}).get("content", "")
                             if content:
                                 collected += content
-                                yield f"data: {_json.dumps({'type': 'token', 'token': content})}\n\n"
+                                yield f"data: {json.dumps({'type': 'token', 'token': content})}\n\n"
                             if data.get("done"):
                                 final_content = collected
-                    except _json.JSONDecodeError:
+                    except json.JSONDecodeError:
                         pass
 
         result_content = final_content or collected
@@ -231,16 +242,12 @@ async def chat_stream(body: ChatStreamRequest, current_user: User = Depends(get_
             "meta": meta_info,
             "conversation_id": conversation_id,
         }
-        yield f"data: {_json.dumps(done_data)}\n\n"
+        yield f"data: {json.dumps(done_data)}\n\n"
 
         if result_content:
             try:
-                from app.models.conversation import Conversation as _Conv
-                from app.db.base import async_session_factory as _factory
-                from app.db.repository import BaseRepository as _Repo
-
-                async with _factory() as db:
-                    repo = _Repo(_Conv, db)
+                async with async_session_factory() as db:
+                    repo = BaseRepository(Conversation, db)
                     if conversation_id:
                         conv = await repo.get(conversation_id)
                         if conv and conv.user_id == current_user.id:
@@ -269,7 +276,7 @@ async def chat_stream(body: ChatStreamRequest, current_user: User = Depends(get_
                             model=model or settings.ollama_model,
                         )
                         await db.commit()
-                        conv_data = _json.dumps({"type": "conv_id", "conversation_id": conv.id})
+                        conv_data = json.dumps({"type": "conv_id", "conversation_id": conv.id})
                         yield f"data: {conv_data}\n\n"
             except Exception:
                 pass

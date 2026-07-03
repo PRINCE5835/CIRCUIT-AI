@@ -5,7 +5,7 @@ from app.core.config import settings
 is_sqlite = settings.database_url.startswith("sqlite")
 is_postgres = "postgresql" in settings.database_url
 
-engine_kwargs = {
+engine_kwargs: dict = {
     "echo": settings.debug,
 }
 if is_sqlite:

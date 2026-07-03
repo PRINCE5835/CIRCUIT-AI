@@ -14,7 +14,9 @@ class AIService:
         self.ollama_headers = {}
         if settings.ollama_api_key:
             self.ollama_headers["X-API-Key"] = settings.ollama_api_key
-        self.ollama_client = httpx.AsyncClient(timeout=settings.ollama_timeout, headers=self.ollama_headers)
+        self.ollama_client = httpx.AsyncClient(
+            timeout=settings.ollama_timeout, headers=self.ollama_headers
+        )
 
         self.circuit_ollama_base_url = settings.circuit_ollama_host or settings.ollama_host
 
@@ -141,7 +143,9 @@ class AIService:
             "stream": True,
         }
         url = f"{self.ollama_base_url}/api/chat"
-        async with httpx.AsyncClient(timeout=settings.ollama_timeout, headers=self.ollama_headers) as client:
+        async with httpx.AsyncClient(
+            timeout=settings.ollama_timeout, headers=self.ollama_headers
+        ) as client:
             async with client.stream("POST", url, json=body) as resp:
                 async for line in resp.aiter_lines():
                     if line.strip():
@@ -150,12 +154,14 @@ class AIService:
     async def cloud_generate(self, prompt: str, system: str | None = None) -> str:
         if cloud_llm.is_available:
             try:
-                return await cloud_llm.generate(prompt=prompt, system=system)
+                cloud_result = await cloud_llm.generate(prompt=prompt, system=system)
+                if cloud_result is not None:
+                    return cloud_result
             except Exception:
                 pass
         try:
-            result = await self.ollama_generate(prompt=prompt)
-            return result.get("response", "")
+            ollama_result = await self.ollama_generate(prompt=prompt)
+            return ollama_result.get("response", "")
         except Exception:
             return "Sorry, I'm having trouble connecting. Please try again later."
 

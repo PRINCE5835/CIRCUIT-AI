@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
 import 'dart:convert';
 import 'dart:html' as html;
+import 'package:breadboard_shared/breadboard_shared.dart';
 
 class SseClient {
   final String url;
@@ -25,6 +26,10 @@ class SseClient {
     _request!.open('POST', url);
     _request!.setRequestHeader('Content-Type', 'application/json');
     _request!.setRequestHeader('Accept', 'text/event-stream');
+    final authHeader = ApiClient.instance.dio.options.headers['Authorization'] as String?;
+    if (authHeader != null && authHeader.isNotEmpty) {
+      _request!.setRequestHeader('Authorization', authHeader);
+    }
     _request!.responseType = 'text';
     _request!.send(jsonEncode(body));
 
