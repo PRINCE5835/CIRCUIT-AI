@@ -20,7 +20,7 @@ services:
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
-        sync: false
+        value: postgresql://postgres:Princenaresh%405835@db.tsbdssxonjwvjnesvhwj.supabase.co:5432/postgres
       - key: BACKEND_CORS_ORIGINS
         value: https://breadboardai.vercel.app,https://webapp-one-lemon.vercel.app,https://webapp-six-eta-87.vercel.app
       - key: OLLAMA_HOST
