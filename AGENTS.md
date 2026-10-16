@@ -44,10 +44,10 @@
 - Frontend (legacy): https://breadboardai.vercel.app
 - Vercel project scope: `princenareshgamot-8750s-projects`
 - Vercel project name: `webapp-one-lemon`
-- Database: PostgreSQL (Render free tier, 1GB, db name: `breadboard`)
-- Database URL (internal): `postgresql://breadboard:$(DB_PASSWORD)@dpg-d8tmg777f7vs73fa6blg-a/breadboard`
+- Database: Supabase PostgreSQL (free tier, project: `ioqnujghrmgiubhusdoa`)
+- Database URL: `postgresql://postgres:$(DB_PASSWORD)@db.ioqnujghrmgiubhusdoa.supabase.co:5432/postgres`
 - Build: `render-build.sh` installs deps; `render-start.sh` runs migrations + gunicorn
-- Blueprint: `render.yaml` defines web service + postgres db
+- Blueprint: `render.yaml` defines web service (no managed db — uses Supabase via `DATABASE_URL` env var)
 - CORS origins: `https://breadboardai.vercel.app,https://webapp-one-lemon.vercel.app` (set via env var `BACKEND_CORS_ORIGINS`)
 - Render env-var API: `PUT /v1/services/{serviceId}/env-vars/{key}` (single, safe) vs `PUT /env-vars` (bulk, wipes DATABASE_URL)
 

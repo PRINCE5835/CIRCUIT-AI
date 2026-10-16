@@ -20,9 +20,7 @@ services:
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
-        fromDatabase:
-          name: breadboard-db
-          property: connectionString
+        sync: false
       - key: BACKEND_CORS_ORIGINS
         value: https://breadboardai.vercel.app,https://webapp-one-lemon.vercel.app,https://webapp-six-eta-87.vercel.app
       - key: OLLAMA_HOST
@@ -36,10 +34,4 @@ services:
       - key: DEBUG
         value: false
 
-databases:
-  - name: breadboard-db
-    plan: free
-    region: oregon
-    databaseName: breadboard
-    user: breadboard
-    ipAllowList: []
+
